@@ -5,6 +5,7 @@
 //  Created by Milo on 10/23/25.
 //
 
+import FirebaseAILogic
 import SwiftUI
 // TODO: Foundation Model
 // TODO: Possibly regex for omitting extraneous answer info
@@ -45,7 +46,11 @@ struct AnalyzeView: View {
     @State private var answerQuery = ""
     @State private var difficulty: Difficulty = .hs
     @State private var categories: [Category] = [] // [] matches all categories
-    @State private var responseText = ""
+    @State private var responseText = AttributedString()
+    @State private var prompt = ""
+    @State private var awaitingResponse = false
+    
+    @State private var showEmptyQueryAlert = false
     
     var difficultyBounds: (Int, Int) {
         // (Low, High)
@@ -59,24 +64,74 @@ struct AnalyzeView: View {
         }
     }
     
+    
+    let model = FirebaseAI.firebaseAI(backend: .googleAI()).generativeModel(modelName: "gemini-2.5-flash-lite")
+    
     var body: some View {
         VStack {
-            TextField("", text: $answerQuery)
+            TextField("", text: $answerQuery, prompt: Text("Enter query"))
                 .padding()
                 .background(
                     RoundedRectangle(cornerRadius: 10)
                         .fill(.gray.opacity(0.2))
                 )
+                .padding(.horizontal)
             
-            ScrollView {
-                Text(responseText)
+            
+            ZStack {
+                ScrollView {
+                    Text(responseText)
+                        .textSelection(.enabled)
+                        .padding(.horizontal)
+                }.opacity(awaitingResponse ? 0 : 1)
+                
+                if awaitingResponse {
+                    ProgressView()
+                }
+                
             }
             
-            Button("Test Button") {
-                Task {
-                    let data = await fetchData(query: answerQuery, difficulty: .hs, categories: [])
-                    responseText = processFetchedData(data)
+            Button {
+                
+                guard answerQuery != "" else {
+                    showEmptyQueryAlert = true
+                    return
                 }
+                
+                awaitingResponse = true
+                Task {
+                    do {
+                        let data = await fetchData(query: answerQuery, difficulty: .hs, categories: [])
+                        prompt = processFetchedData(data)
+                        let tokenResp = try await model.countTokens(prompt)
+                        print("Tokens: \(tokenResp.totalTokens)")
+//                        let responseStream = try model.generateContentStream(prompt)
+//                        for try await responseChunk in responseStream {
+//                            responseText += processResponse(responseChunk.text ?? " ")
+//                            awaitingResponse = false
+//                        }
+                        let response = try await model.generateContent(prompt)
+                        responseText = processResponse(response.text ?? "")
+                        awaitingResponse = false
+                    } catch {
+                        responseText = "Error with generation"
+                        awaitingResponse = false
+                    }
+                }
+            } label: {
+                Text("Find Common Clues")
+                    .foregroundStyle(.white)
+                    .bold()
+                    .padding()
+                    .background(
+                        Capsule()
+                            .fill(Color.blue.gradient)
+                    )
+            }
+            .alert("Empty Query", isPresented: $showEmptyQueryAlert) {
+                Button("Ok") { }
+            } message: {
+                Text("Please enter a query.")
             }
             
         }
@@ -141,13 +196,25 @@ struct AnalyzeView: View {
     
     private func processFetchedData(_ data: [Question]) -> String {
         // Converts the data into a string to feed into llm
-        var processedDataString = "For the following questions, the easiest difficulty is \(difficultyBounds.0) and the hardest difficulty is \(difficultyBounds.1), where the difficulty increases with the number. END INTRO. "
+        var processedDataString = "Given these quizbowl questions, can you find common clues between them? The answer is \(answerQuery). For the following questions, the easiest difficulty is \(difficultyBounds.0) and the hardest difficulty is \(difficultyBounds.1), where the difficulty increases with the number. Order the clues by those that appear more often at easier difficulties to those that appear more often in harder difficulties. Each question will be separated from the next by 'END QUESTION'. Use new lines (\n) to separate clues (do not use bullet points). Separate your response into easy, medium, and hard difficulties, and provide a brief description (1 to 2 sentences) of each clue you found. Bold each clue and difficulty, but not the description. Do not generate any extraneous information about the question number of difficulty number. END INTRO. "
         for i in data.indices {
             processedDataString += "This is question number \(i + 1). The difficulty is \(data[i].difficulty). The answer is \(data[i].answer_sanitized). The question is as follows: \(data[i].question_sanitized) END QUESTION. "
         }
         
+        print(processedDataString)
+        
         return processedDataString
         
+    }
+    
+    private func processResponse(_ response: String) -> AttributedString {
+        do {
+            let processedResult = try AttributedString(markdown: response, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))
+            return processedResult
+        } catch {
+            print("Error with processing response")
+            return "Error with processing response"
+        }
     }
     
     
