@@ -6,6 +6,7 @@
 //
 
 import FirebaseAILogic
+import SwiftData
 import SwiftUI
 // TODO: Foundation Model
 // TODO: Possibly regex for omitting extraneous answer info
@@ -26,22 +27,8 @@ struct AnalyzeView: View {
         var tossups: Questions
     }
     
-    enum  Difficulty {
-        case ms, hs, col
-    }
+    @Environment(\.modelContext) var modelContext
     
-    enum Category: String {
-        case lit = "Literature"
-        case hist = "History"
-        case sci = "Science"
-        case art = "Fine Arts"
-        case rel = "Religion"
-        case myth = "Mythology"
-        case phil = "Philosophy"
-        case ss = "Social Science"
-        case ce = "Current Events"
-        case geo = "Geography"
-    }
     
     @State private var answerQuery = ""
     @State private var difficulty: Difficulty = .hs
@@ -49,6 +36,7 @@ struct AnalyzeView: View {
     @State private var responseText = AttributedString()
     @State private var prompt = ""
     @State private var awaitingResponse = false
+    @State private var responseRecieved = false
     
     @State private var showEmptyQueryAlert = false
     
@@ -77,6 +65,64 @@ struct AnalyzeView: View {
                 )
                 .padding(.horizontal)
             
+            HStack {
+                
+                Menu {
+                    ForEach(Category.allCases) { category in
+                        CategorySelectionButton(buttonCategory: category, categories: $categories)
+                    }
+                } label: {
+                    Label("Select Categories", systemImage: "chevron.up.chevron.down")
+                        .foregroundStyle(.white)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.green.gradient)
+                        )
+                }
+                .menuActionDismissBehavior(.disabled)
+                .onAppear {
+                    for category in Category.allCases {
+                        categories.append(category)
+                    }
+                }
+                
+                Spacer()
+                
+                Menu {
+                    ForEach(Difficulty.allCases) { difficulty in
+                        DifficultySelectionButton(buttonDifficulty: difficulty, difficulty: $difficulty)
+                    }
+                } label: {
+                    Label("Select Difficulty", systemImage: "chevron.up.chevron.down")
+                        .foregroundStyle(.white)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.red.gradient)
+                        )
+                }
+                
+//                Picker(selection: $difficulty) {
+//                    ForEach(Difficulty.allCases) { difficulty in
+//                        Text(difficulty.rawValue)
+//                            .tag(difficulty)
+//                    }
+//                } label: {
+//                        
+//                    Label("Select Difficulty", systemImage: "chevron.up.chevron.down")
+//                        .foregroundStyle(.white)
+//                        .padding()
+//                        .overlay(
+//                            RoundedRectangle(cornerRadius: 10)
+//                                .fill(Color.red.gradient)
+//                        )
+//                }
+//                .pickerStyle(.menu)
+
+                
+            }.padding()
+            
             
             ZStack {
                 ScrollView {
@@ -86,12 +132,17 @@ struct AnalyzeView: View {
                 }.opacity(awaitingResponse ? 0 : 1)
                 
                 if awaitingResponse {
-                    ProgressView()
+                    VStack {
+                        ProgressView()
+                        Text("This may take a moment...")
+                    }
                 }
                 
             }
             
             Button {
+                
+                responseRecieved = false
                 
                 guard answerQuery != "" else {
                     showEmptyQueryAlert = true
@@ -113,6 +164,7 @@ struct AnalyzeView: View {
                         let response = try await model.generateContent(prompt)
                         responseText = processResponse(response.text ?? "")
                         awaitingResponse = false
+                        responseRecieved = true
                     } catch {
                         responseText = "Error with generation"
                         awaitingResponse = false
@@ -124,7 +176,7 @@ struct AnalyzeView: View {
                     .bold()
                     .padding()
                     .background(
-                        Capsule()
+                        RoundedRectangle(cornerRadius: 10)
                             .fill(Color.blue.gradient)
                     )
             }
@@ -132,6 +184,20 @@ struct AnalyzeView: View {
                 Button("Ok") { }
             } message: {
                 Text("Please enter a query.")
+            }
+            
+            Button {
+                let newCard = Card(dateReviewed: Date.now, answer: answerQuery, details: responseText, category: nil, personalNotes: "")
+                modelContext.insert(newCard)
+            } label: {
+                Text("Save")
+                    .foregroundStyle(.white)
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.green.gradient)
+                    )
+                    .opacity(responseRecieved ? 1.0 : 0.0)
             }
             
         }
@@ -186,7 +252,7 @@ struct AnalyzeView: View {
                 finalData = decodedData.tossups.questionArray
             }
         } catch {
-            print("An error occured: \(error.localizedDescription)")
+            print("An error occured while fetching data: \(error.localizedDescription)")
             return []
         }
         
@@ -218,4 +284,55 @@ struct AnalyzeView: View {
     }
     
     
+}
+
+// MARK: CategorySelectionButton
+struct CategorySelectionButton: View {
+    let buttonCategory: Category
+    @Binding var categories: [Category]
+    
+    var body: some View {
+        Button {
+            if categories.contains(buttonCategory) {
+                categories.removeAll { category in
+                    category == buttonCategory
+                }
+            } else {
+                categories.append(buttonCategory)
+            }
+            print(categories)
+        } label: {
+//            Label(buttonCategory.rawValue, systemImage: categories.contains(buttonCategory) ? "checkmark" : "")
+            HStack {
+                Text(buttonCategory.rawValue)
+                if categories.contains(buttonCategory) {
+                    Image(systemName: "checkmark")
+                }
+            }
+//            if categories.contains(buttonCategory) {
+//                Label(buttonCategory.rawValue, systemImage: "checkmark")
+//            } else {
+//                Text(buttonCategory.rawValue)
+//            }
+        }
+    }
+}
+
+// MARK: DifficultySelectionButton
+struct DifficultySelectionButton: View {
+    let buttonDifficulty: Difficulty
+    @Binding var difficulty: Difficulty
+    
+    var body: some View {
+        Button {
+            difficulty = buttonDifficulty
+        } label: {
+            HStack {
+                Text(buttonDifficulty.rawValue)
+                if difficulty == buttonDifficulty {
+                    Image(systemName: "checkmark")
+                }
+            }
+        }
+    }
 }

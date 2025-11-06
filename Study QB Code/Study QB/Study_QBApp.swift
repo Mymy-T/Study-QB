@@ -6,6 +6,7 @@
 //
 
 import Firebase
+import SwiftData
 import SwiftUI
 
 @main
@@ -13,6 +14,7 @@ struct Study_QBApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .modelContainer(for: Card.self)
         }
     }
     

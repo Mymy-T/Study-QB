@@ -13,6 +13,9 @@ struct ContentView: View {
             Tab("Analyze", systemImage: "magnifyingglass") {
                 AnalyzeView()
             }
+            Tab("Manage Cards", systemImage: "note.text") {
+                ManageCardView()
+            }
         }
     }
 }
