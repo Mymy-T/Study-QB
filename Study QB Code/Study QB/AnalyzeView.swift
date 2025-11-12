@@ -32,6 +32,7 @@ struct AnalyzeView: View {
     
     @State private var answerQuery = ""
     @State private var difficulty: Difficulty = .hs
+    //@State private var difficultyLabelGeometry: GeometryProxy?
     @State private var categories: [Category] = [] // [] matches all categories
     @State private var responseText = AttributedString()
     @State private var prompt = ""
@@ -56,148 +57,180 @@ struct AnalyzeView: View {
     let model = FirebaseAI.firebaseAI(backend: .googleAI()).generativeModel(modelName: "gemini-2.5-flash-lite")
     
     var body: some View {
-        VStack {
-            TextField("", text: $answerQuery, prompt: Text("Enter query"))
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(.gray.opacity(0.2))
-                )
-                .padding(.horizontal)
+        ZStack {
             
-            HStack {
+//            GeometryReader { proxy in
+//                Label("Middle School", systemImage: "chevron.up.chevron.down")
+//                    .padding()
+//                    .onAppear {
+//                        difficultyLabelGeometry = proxy
+//                    }
+//                    .opacity(0)
+//            }
+            
+            VStack {
                 
-                Menu {
-                    ForEach(Category.allCases) { category in
-                        CategorySelectionButton(buttonCategory: category, categories: $categories)
+                HStack {
+                    
+                    VStack {
+                        
+                        Text("Categories")
+                        
+                        Menu {
+                            ForEach(Category.allCases) { category in
+                                CategorySelectionButton(buttonCategory: category, categories: $categories)
+                            }
+                        } label: {
+                            Label("Select Categories", systemImage: "chevron.up.chevron.down")
+                                .foregroundStyle(.white)
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.green.gradient)
+                                )
+                        }
+                        .menuActionDismissBehavior(.disabled)
+                        .onAppear {
+                            for category in Category.allCases {
+                                categories.append(category)
+                            }
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    VStack {
+                        
+                        Text("Difficulty")
+                        
+                        Menu {
+                            ForEach(Difficulty.allCases) { difficulty in
+                                DifficultySelectionButton(buttonDifficulty: difficulty, difficulty: $difficulty)
+                            }
+                        } label: {
+                            ZStack {
+                                
+                                Label("Middle School", systemImage: "chevron.up.chevron.down")
+                                    .padding()
+                                    .opacity(0)
+                                
+                                Label(difficulty.rawValue, systemImage: "chevron.up.chevron.down")
+                                    .foregroundStyle(.white)
+                                    .padding()
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(Color.red.gradient)
+                                    )
+                                //                                .frame(width: (difficultyLabelGeometry?.size.width) ?? UIScreen.main.bounds.width / 5)
+                            }
+                        }
+                    }
+                    
+                    //                Picker(selection: $difficulty) {
+                    //                    ForEach(Difficulty.allCases) { difficulty in
+                    //                        Text(difficulty.rawValue)
+                    //                            .tag(difficulty)
+                    //                    }
+                    //                } label: {
+                    //
+                    //                    Label("Select Difficulty", systemImage: "chevron.up.chevron.down")
+                    //                        .foregroundStyle(.white)
+                    //                        .padding()
+                    //                        .overlay(
+                    //                            RoundedRectangle(cornerRadius: 10)
+                    //                                .fill(Color.red.gradient)
+                    //                        )
+                    //                }
+                    //                .pickerStyle(.menu)
+                    
+                    
+                }.padding()
+                
+                TextField("", text: $answerQuery, prompt: Text("Enter query"))
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(.gray.opacity(0.2))
+                    )
+                    .padding(.horizontal)
+                
+                
+                ZStack {
+                    ScrollView {
+                        Text(responseText)
+                            .textSelection(.enabled)
+                            .padding(.horizontal)
+                    }.opacity(awaitingResponse ? 0 : 1)
+                    
+                    if awaitingResponse {
+                        VStack {
+                            ProgressView()
+                            Text("This may take a moment...")
+                        }
+                    }
+                    
+                }
+                
+                Button {
+                    
+                    responseRecieved = false
+                    
+                    guard answerQuery != "" else {
+                        showEmptyQueryAlert = true
+                        return
+                    }
+                    
+                    awaitingResponse = true
+                    Task {
+                        do {
+                            let data = await fetchData(query: answerQuery, difficulty: .hs, categories: [])
+                            prompt = processFetchedData(data)
+                            let tokenResp = try await model.countTokens(prompt)
+                            print("Tokens: \(tokenResp.totalTokens)")
+                            //                        let responseStream = try model.generateContentStream(prompt)
+                            //                        for try await responseChunk in responseStream {
+                            //                            responseText += processResponse(responseChunk.text ?? " ")
+                            //                            awaitingResponse = false
+                            //                        }
+                            let response = try await model.generateContent(prompt)
+                            responseText = processResponse(response.text ?? "")
+                            awaitingResponse = false
+                            responseRecieved = true
+                        } catch {
+                            responseText = "Error with generation"
+                            awaitingResponse = false
+                        }
                     }
                 } label: {
-                    Label("Select Categories", systemImage: "chevron.up.chevron.down")
+                    Text("Find Common Clues")
+                        .foregroundStyle(.white)
+                        .bold()
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.blue.gradient)
+                        )
+                }
+                .alert("Empty Query", isPresented: $showEmptyQueryAlert) {
+                    Button("Ok") { }
+                } message: {
+                    Text("Please enter a query.")
+                }
+                
+                Button {
+                    let newCard = Card(dateReviewed: Date.now, answer: answerQuery, details: responseText, category: nil, personalNotes: "")
+                    modelContext.insert(newCard)
+                } label: {
+                    Text("Save")
                         .foregroundStyle(.white)
                         .padding()
                         .background(
                             RoundedRectangle(cornerRadius: 10)
                                 .fill(Color.green.gradient)
                         )
-                }
-                .menuActionDismissBehavior(.disabled)
-                .onAppear {
-                    for category in Category.allCases {
-                        categories.append(category)
-                    }
+                        .opacity(responseRecieved ? 1.0 : 0.0)
                 }
                 
-                Spacer()
-                
-                Menu {
-                    ForEach(Difficulty.allCases) { difficulty in
-                        DifficultySelectionButton(buttonDifficulty: difficulty, difficulty: $difficulty)
-                    }
-                } label: {
-                    Label("Select Difficulty", systemImage: "chevron.up.chevron.down")
-                        .foregroundStyle(.white)
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color.red.gradient)
-                        )
-                }
-                
-//                Picker(selection: $difficulty) {
-//                    ForEach(Difficulty.allCases) { difficulty in
-//                        Text(difficulty.rawValue)
-//                            .tag(difficulty)
-//                    }
-//                } label: {
-//                        
-//                    Label("Select Difficulty", systemImage: "chevron.up.chevron.down")
-//                        .foregroundStyle(.white)
-//                        .padding()
-//                        .overlay(
-//                            RoundedRectangle(cornerRadius: 10)
-//                                .fill(Color.red.gradient)
-//                        )
-//                }
-//                .pickerStyle(.menu)
-
-                
-            }.padding()
-            
-            
-            ZStack {
-                ScrollView {
-                    Text(responseText)
-                        .textSelection(.enabled)
-                        .padding(.horizontal)
-                }.opacity(awaitingResponse ? 0 : 1)
-                
-                if awaitingResponse {
-                    VStack {
-                        ProgressView()
-                        Text("This may take a moment...")
-                    }
-                }
-                
-            }
-            
-            Button {
-                
-                responseRecieved = false
-                
-                guard answerQuery != "" else {
-                    showEmptyQueryAlert = true
-                    return
-                }
-                
-                awaitingResponse = true
-                Task {
-                    do {
-                        let data = await fetchData(query: answerQuery, difficulty: .hs, categories: [])
-                        prompt = processFetchedData(data)
-                        let tokenResp = try await model.countTokens(prompt)
-                        print("Tokens: \(tokenResp.totalTokens)")
-//                        let responseStream = try model.generateContentStream(prompt)
-//                        for try await responseChunk in responseStream {
-//                            responseText += processResponse(responseChunk.text ?? " ")
-//                            awaitingResponse = false
-//                        }
-                        let response = try await model.generateContent(prompt)
-                        responseText = processResponse(response.text ?? "")
-                        awaitingResponse = false
-                        responseRecieved = true
-                    } catch {
-                        responseText = "Error with generation"
-                        awaitingResponse = false
-                    }
-                }
-            } label: {
-                Text("Find Common Clues")
-                    .foregroundStyle(.white)
-                    .bold()
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.blue.gradient)
-                    )
-            }
-            .alert("Empty Query", isPresented: $showEmptyQueryAlert) {
-                Button("Ok") { }
-            } message: {
-                Text("Please enter a query.")
-            }
-            
-            Button {
-                let newCard = Card(dateReviewed: Date.now, answer: answerQuery, details: responseText, category: nil, personalNotes: "")
-                modelContext.insert(newCard)
-            } label: {
-                Text("Save")
-                    .foregroundStyle(.white)
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.green.gradient)
-                    )
-                    .opacity(responseRecieved ? 1.0 : 0.0)
             }
             
         }
@@ -267,8 +300,6 @@ struct AnalyzeView: View {
             processedDataString += "This is question number \(i + 1). The difficulty is \(data[i].difficulty). The answer is \(data[i].answer_sanitized). The question is as follows: \(data[i].question_sanitized) END QUESTION. "
         }
         
-        print(processedDataString)
-        
         return processedDataString
         
     }
@@ -276,6 +307,7 @@ struct AnalyzeView: View {
     private func processResponse(_ response: String) -> AttributedString {
         do {
             let processedResult = try AttributedString(markdown: response, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))
+            
             return processedResult
         } catch {
             print("Error with processing response")
@@ -300,7 +332,6 @@ struct CategorySelectionButton: View {
             } else {
                 categories.append(buttonCategory)
             }
-            print(categories)
         } label: {
 //            Label(buttonCategory.rawValue, systemImage: categories.contains(buttonCategory) ? "checkmark" : "")
             HStack {

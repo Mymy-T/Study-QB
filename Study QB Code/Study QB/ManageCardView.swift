@@ -29,7 +29,9 @@ struct ManageCardView: View {
                                 if let cardCategory = card.category {
                                     Text(cardCategory.rawValue)
                                 }
-                            }.padding()
+                            }
+                            .foregroundStyle(.white)
+                            .padding()
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
                                         .fill(Color.blue.gradient.opacity(0.5)) // TODO: Add color based on category
