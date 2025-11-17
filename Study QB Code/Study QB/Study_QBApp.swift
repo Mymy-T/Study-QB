@@ -9,6 +9,8 @@ import Firebase
 import SwiftData
 import SwiftUI
 
+// TODO: Set max character limit for answerline, or add shrinking capabilities in ManageCardView
+
 @main
 struct Study_QBApp: App {
     var body: some Scene {

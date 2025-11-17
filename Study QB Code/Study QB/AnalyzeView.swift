@@ -32,7 +32,6 @@ struct AnalyzeView: View {
     
     @State private var answerQuery = ""
     @State private var difficulty: Difficulty = .hs
-    //@State private var difficultyLabelGeometry: GeometryProxy?
     @State private var categories: [Category] = [] // [] matches all categories
     @State private var responseText = AttributedString()
     @State private var prompt = ""
@@ -40,6 +39,7 @@ struct AnalyzeView: View {
     @State private var responseRecieved = false
     
     @State private var showEmptyQueryAlert = false
+    @State private var showCardSavedAlert = false
     
     var difficultyBounds: (Int, Int) {
         // (Low, High)
@@ -57,17 +57,7 @@ struct AnalyzeView: View {
     let model = FirebaseAI.firebaseAI(backend: .googleAI()).generativeModel(modelName: "gemini-2.5-flash-lite")
     
     var body: some View {
-        ZStack {
-            
-//            GeometryReader { proxy in
-//                Label("Middle School", systemImage: "chevron.up.chevron.down")
-//                    .padding()
-//                    .onAppear {
-//                        difficultyLabelGeometry = proxy
-//                    }
-//                    .opacity(0)
-//            }
-            
+        NavigationStack {
             VStack {
                 
                 HStack {
@@ -121,27 +111,9 @@ struct AnalyzeView: View {
                                         RoundedRectangle(cornerRadius: 10)
                                             .fill(Color.red.gradient)
                                     )
-                                //                                .frame(width: (difficultyLabelGeometry?.size.width) ?? UIScreen.main.bounds.width / 5)
                             }
                         }
                     }
-                    
-                    //                Picker(selection: $difficulty) {
-                    //                    ForEach(Difficulty.allCases) { difficulty in
-                    //                        Text(difficulty.rawValue)
-                    //                            .tag(difficulty)
-                    //                    }
-                    //                } label: {
-                    //
-                    //                    Label("Select Difficulty", systemImage: "chevron.up.chevron.down")
-                    //                        .foregroundStyle(.white)
-                    //                        .padding()
-                    //                        .overlay(
-                    //                            RoundedRectangle(cornerRadius: 10)
-                    //                                .fill(Color.red.gradient)
-                    //                        )
-                    //                }
-                    //                .pickerStyle(.menu)
                     
                     
                 }.padding()
@@ -171,67 +143,77 @@ struct AnalyzeView: View {
                     
                 }
                 
-                Button {
+                HStack {
                     
-                    responseRecieved = false
-                    
-                    guard answerQuery != "" else {
-                        showEmptyQueryAlert = true
-                        return
-                    }
-                    
-                    awaitingResponse = true
-                    Task {
-                        do {
-                            let data = await fetchData(query: answerQuery, difficulty: .hs, categories: [])
-                            prompt = processFetchedData(data)
-                            let tokenResp = try await model.countTokens(prompt)
-                            print("Tokens: \(tokenResp.totalTokens)")
-                            //                        let responseStream = try model.generateContentStream(prompt)
-                            //                        for try await responseChunk in responseStream {
-                            //                            responseText += processResponse(responseChunk.text ?? " ")
-                            //                            awaitingResponse = false
-                            //                        }
-                            let response = try await model.generateContent(prompt)
-                            responseText = processResponse(response.text ?? "")
-                            awaitingResponse = false
-                            responseRecieved = true
-                        } catch {
-                            responseText = "Error with generation"
-                            awaitingResponse = false
+                    // MARK: Find Common Clues
+                    Button {
+                        
+                        responseRecieved = false
+                        
+                        guard answerQuery != "" else {
+                            showEmptyQueryAlert = true
+                            return
                         }
+                        
+                        awaitingResponse = true
+                        Task {
+                            do {
+                                let data = await fetchData(query: answerQuery, difficulty: .hs, categories: [])
+                                prompt = processFetchedData(data)
+                                let response = try await model.generateContent(prompt)
+                                responseText = processResponse(response.text ?? "")
+                                awaitingResponse = false
+                                responseRecieved = true
+                            } catch {
+                                responseText = "Error with generation"
+                                awaitingResponse = false
+                            }
+                        }
+                    } label: {
+                        Text("Find Common Clues")
+                            .foregroundStyle(.white)
+                            .bold()
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.blue.gradient)
+                            )
                     }
-                } label: {
-                    Text("Find Common Clues")
-                        .foregroundStyle(.white)
-                        .bold()
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color.blue.gradient)
-                        )
-                }
-                .alert("Empty Query", isPresented: $showEmptyQueryAlert) {
-                    Button("Ok") { }
-                } message: {
-                    Text("Please enter a query.")
-                }
+                    .alert("Empty Query", isPresented: $showEmptyQueryAlert) {
+                        Button("Ok") { }
+                    } message: {
+                        Text("Please enter a query.")
+                    }
+                    
+                    Spacer()
+                    
+                    // MARK: Save Card
+                    Button {
+                        let newCard = Card(dateReviewed: Date.now, answer: answerQuery, details: responseText, category: nil, personalNotes: "", rgba: convertColorToRGBA(.red.opacity(0.4)))
+                        modelContext.insert(newCard)
+                        showCardSavedAlert = true
+                    } label: {
+                        Text("Save")
+                            .foregroundStyle(.white)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.green.gradient)
+                            )
+                            .opacity(responseRecieved ? 1.0 : 0.0)
+                    }
+                    .alert("Card Saved", isPresented: $showCardSavedAlert) {
+                        Button("Ok") { }
+                    }
+                    
+                }.padding()
                 
-                Button {
-                    let newCard = Card(dateReviewed: Date.now, answer: answerQuery, details: responseText, category: nil, personalNotes: "")
-                    modelContext.insert(newCard)
-                } label: {
-                    Text("Save")
-                        .foregroundStyle(.white)
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color.green.gradient)
-                        )
-                        .opacity(responseRecieved ? 1.0 : 0.0)
-                }
                 
-            }
+                
+                
+                
+            }.navigationTitle("Analyze")
+                .navigationBarTitleDisplayMode(.inline)
             
         }
         
@@ -295,7 +277,7 @@ struct AnalyzeView: View {
     
     private func processFetchedData(_ data: [Question]) -> String {
         // Converts the data into a string to feed into llm
-        var processedDataString = "Given these quizbowl questions, can you find common clues between them? The answer is \(answerQuery). For the following questions, the easiest difficulty is \(difficultyBounds.0) and the hardest difficulty is \(difficultyBounds.1), where the difficulty increases with the number. Order the clues by those that appear more often at easier difficulties to those that appear more often in harder difficulties. Each question will be separated from the next by 'END QUESTION'. Use new lines (\n) to separate clues (do not use bullet points). Separate your response into easy, medium, and hard difficulties, and provide a brief description (1 to 2 sentences) of each clue you found. Bold each clue and difficulty, but not the description. Do not generate any extraneous information about the question number of difficulty number. END INTRO. "
+        var processedDataString = "Given these quizbowl questions, can you find common clues between them? The answer is \(answerQuery). For the following questions, the easiest difficulty is \(difficultyBounds.0) and the hardest difficulty is \(difficultyBounds.1), where the difficulty increases with the number. Order the clues by those that appear more often at easier difficulties to those that appear more often in harder difficulties. Each question will be separated from the next by 'END QUESTION'. Use new lines (\n) to separate clues (do not use bullet points). Separate your response into easy, medium, and hard difficulties, and provide a brief description (1 to 2 sentences) of each clue you found. Bold each clue and difficulty, but not the description. Do not generate any extraneous information about the question number of difficulty number. The questions are as follows: "
         for i in data.indices {
             processedDataString += "This is question number \(i + 1). The difficulty is \(data[i].difficulty). The answer is \(data[i].answer_sanitized). The question is as follows: \(data[i].question_sanitized) END QUESTION. "
         }

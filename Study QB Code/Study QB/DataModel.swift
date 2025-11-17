@@ -44,12 +44,14 @@ class Card {
     var details: AttributedString
     var category: Category?
     var personalNotes: String
+    var rgba: [Double]
     
-    init(dateReviewed: Date, answer: String, details: AttributedString, category: Category?, personalNotes: String) {
+    init(dateReviewed: Date, answer: String, details: AttributedString, category: Category?, personalNotes: String, rgba: [Double]) {
         self.dateReviewed = dateReviewed
         self.answer = answer
         self.details = details
         self.category = category
         self.personalNotes = personalNotes
+        self.rgba = rgba
     }
 }

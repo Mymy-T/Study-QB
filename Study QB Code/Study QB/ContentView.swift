@@ -14,7 +14,9 @@ struct ContentView: View {
                 AnalyzeView()
             }
             Tab("Manage Cards", systemImage: "note.text") {
-                ManageCardView()
+                GeometryReader { geometry in
+                    ManageCardView(geometry: geometry)
+                }
             }
         }
     }
