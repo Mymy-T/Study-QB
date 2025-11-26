@@ -20,6 +20,7 @@ struct ManageCardView: View {
     @State private var showingDeleteAlert = false
     @State private var cardToDelete: Card?
     @State private var searchText = ""
+    @State private var categories: [Category] = []
     
     let columns = [GridItem(.flexible()), GridItem(.flexible())]
     
@@ -36,16 +37,26 @@ struct ManageCardView: View {
     }
     
     var searchResults: [Card] {
+        let filteredCards = {
+            return cards.filter {
+                if let cardCategory = $0.category {
+                    return categories.contains(cardCategory)
+                } else {
+                    return true
+                }
+            }
+        }()
             if searchText.isEmpty {
-                return cards
+                return filteredCards
             } else {
-                return cards.filter { $0.answer.localizedStandardContains(searchText) }
+                return filteredCards.filter { $0.answer.localizedStandardContains(searchText) }
             }
         }
     
     
     var body: some View {
         NavigationStack {
+            
             ScrollView {
                 LazyVGrid(columns: columns) {
                     ForEach(searchResults.enumerated(), id: \.offset) { index, card in
@@ -99,6 +110,35 @@ struct ManageCardView: View {
                 .navigationTitle("Your Cards")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        // MARK: Categories Menu
+                        Menu {
+                            ForEach(Category.allCases) { category in
+                                CategorySelectionButton(buttonCategory: category, categories: $categories)
+                            }
+                            Divider()
+                            Button("Select All") {
+                                categories.removeAll()
+                                for category in Category.allCases {
+                                    categories.append(category)
+                                }
+                            }
+                            Button("Remove All") {
+                                categories.removeAll()
+                            }
+                        } label: {
+                            Image(systemName: "line.horizontal.3.decrease")
+                                .foregroundStyle(.blue)
+                        }
+                        .menuActionDismissBehavior(.disabled)
+                        .onAppear {
+                            for category in Category.allCases {
+                                categories.append(category)
+                            }
+                        }
+                    }
+                    
+                    
                     ToolbarItem(placement: .topBarTrailing) {
                         NavigationLink {
                             GeometryReader { geometry in

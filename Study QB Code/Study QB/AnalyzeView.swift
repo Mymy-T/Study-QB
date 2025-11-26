@@ -66,9 +66,20 @@ struct AnalyzeView: View {
                         
                         Text("Categories")
                         
+                        // MARK: Categories Menu
                         Menu {
                             ForEach(Category.allCases) { category in
                                 CategorySelectionButton(buttonCategory: category, categories: $categories)
+                            }
+                            Divider()
+                            Button("Select All") {
+                                categories.removeAll()
+                                for category in Category.allCases {
+                                    categories.append(category)
+                                }
+                            }
+                            Button("Remove All") {
+                                categories.removeAll()
                             }
                         } label: {
                             Label("Select Categories", systemImage: "chevron.up.chevron.down")
@@ -189,6 +200,7 @@ struct AnalyzeView: View {
                     
                     // MARK: Save Card
                     Button {
+                        responseText.font = UIFont.systemFont(ofSize: 17)
                         let newCard = Card(dateReviewed: Date.now, answer: answerQuery, details: responseText, category: nil, personalNotes: "", rgba: convertColorToRGBA(.red.opacity(0.4)))
                         modelContext.insert(newCard)
                         showCardSavedAlert = true
@@ -315,21 +327,16 @@ struct CategorySelectionButton: View {
                 categories.append(buttonCategory)
             }
         } label: {
-//            Label(buttonCategory.rawValue, systemImage: categories.contains(buttonCategory) ? "checkmark" : "")
             HStack {
                 Text(buttonCategory.rawValue)
-                if categories.contains(buttonCategory) {
-                    Image(systemName: "checkmark")
-                }
+                Spacer()
+                Image(systemName: categories.contains(buttonCategory) ? "checkmark.square" : "square")
             }
-//            if categories.contains(buttonCategory) {
-//                Label(buttonCategory.rawValue, systemImage: "checkmark")
-//            } else {
-//                Text(buttonCategory.rawValue)
-//            }
         }
     }
 }
+
+
 
 // MARK: DifficultySelectionButton
 struct DifficultySelectionButton: View {

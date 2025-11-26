@@ -7,6 +7,7 @@
 
 import SwiftData
 import SwiftUI
+import UIKit
 
 struct CardEditorView: View {
     
@@ -14,6 +15,7 @@ struct CardEditorView: View {
     @Environment(\.fontResolutionContext) var fontResolutionContext
     @Environment(\.modelContext) var modelContext
     @Environment(\.locale) var locale
+    @Environment(\.font) var environmentFont
     
     struct InitialState {
         var dateReviewed: Date
@@ -28,8 +30,8 @@ struct CardEditorView: View {
     let existingCard: Card? // If this isn't nil, the user is editing the card; otherwise, the user is creating a new card
     @State private var dateReviewed = Date.now
     @State private var answer = ""
-    @State private var details = AttributedString()
-    @State private var attributedTextSelection = AttributedTextSelection()
+    @State private var details = NSAttributedString()
+//    @State private var attributedTextSelection = AttributedTextSelection()
     @State private var category: Category? = .lit
     @State private var personalNotes = ""
     @State private var color: Color = .red.opacity(0.4)
@@ -48,7 +50,7 @@ struct CardEditorView: View {
     }
     
     var unsavedChangesPresent: Bool {
-        return !((initialState.dateReviewed == dateReviewed) && (initialState.answer == answer) && (initialState.details == details) && (initialState.category == category) && (initialState.personalNotes == personalNotes) && (initialState.color == color))
+        return !((initialState.dateReviewed == dateReviewed) && (initialState.answer == answer) && (initialState.details == AttributedString(details)) && (initialState.category == category) && (initialState.personalNotes == personalNotes) && (initialState.color == color))
         
     }
     
@@ -66,12 +68,6 @@ struct CardEditorView: View {
             Section("Answer Line") {
                 TextField("", text: $answer, prompt: Text("Enter the answerline of the question"))
             }
-            Section("Details") {
-                TextEditor(text: $details, selection: $attributedTextSelection)
-                    .focused($editingDetails)
-                    .frame(height: geometry.size.height/2)
-            }
-            
             Section("Category") {
                 Picker("Select a category", selection: $category) {
                     ForEach(Category.allCases) { category in
@@ -80,15 +76,33 @@ struct CardEditorView: View {
                     }
                 }
             }
+            Section("Select Color") {
+                colorPickerView()
+            }
             Section("Personal Notes") {
                 ZStack {
                     TextEditor(text: $personalNotes)
+                        .scrollDisabled(true)
                         .focused($editingPersonalNotes)
-                        .frame(height: geometry.size.height / 4)
+                    //.frame(height: geometry.size.height/5)
                     Text("Add any personal notes here.")
                         .opacity(personalNotes.trimmingCharacters(in: .whitespacesAndNewlines) == "" ? 0.3 : 0)
                 }
             }
+            
+            // MARK: Details
+                Section("Details") {
+                    //                TextEditor(text: $details, selection: $attributedTextSelection)
+                    //                //.frame(height: geometry.size.height/2)
+                    //                    .scrollDisabled(true)
+                    //                    .focused($editingDetails)
+                    TextEditorView(text: $details, geometry: geometry)
+                        //.frame(width: geometry.size.width * 0.9)
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: geometry.size.height * 0.1)
+                        //.border(.green)
+                        .focused($editingDetails)
+                }
             
             Section("Date Reviewed") {
                 VStack {
@@ -108,41 +122,16 @@ struct CardEditorView: View {
                 }
             }
             
-            Section("Select Color") {
-                HStack {
-                    ForEach(colors.indices, id: \.self) { i in
-                        Button {
-                            color = colors[i].opacity(0.4)
-                        } label: {
-                            Circle()
-                                .fill(colors[i].opacity(0.4))
-                                .overlay(
-                                    Circle()
-                                        .fill(Color.clear)
-                                        .stroke(Color.blue, lineWidth: color == colors[i].opacity(0.4) ? 5 : 0)
-                                )
-                        }.buttonStyle(.borderless)
-                    }
-                }
-            }
-            
         }.scrollContentBackground(.hidden)
             .background(
                 Rectangle()
                     .fill(color)
+                    .ignoresSafeArea()
             )
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
-                if let existingCard = existingCard {
-                    answer = existingCard.answer
-                    details = existingCard.details
-                    category = existingCard.category
-                    personalNotes = existingCard.personalNotes
-                    dateReviewed = existingCard.dateReviewed
-                    color = convertRGBAToColor(existingCard.rgba)
-                }
-                initialState = InitialState(dateReviewed: dateReviewed, answer: answer, details: details, category: category, personalNotes: personalNotes, color: color)
+                loadAndPreprocess()
                 refresh.toggle()
             }
             .toolbar {
@@ -170,23 +159,112 @@ struct CardEditorView: View {
                     }
                 }
             }
-//            .toolbarBackground(color, for: .navigationBar)
-//            .toolbarBackground(color, for: .tabBar)
-//            .toolbarBackgroundVisibility(.visible, for: .navigationBar)
-//            .toolbarBackgroundVisibility(.visible, for: .tabBar)
+            .toolbarVisibility(.hidden, for: .tabBar)
+    }
+    
+    private func loadAndPreprocess() {
+        if let existingCard = existingCard {
+            answer = existingCard.answer
+            details = NSAttributedString(existingCard.details)
+            category = existingCard.category
+            personalNotes = existingCard.personalNotes
+            dateReviewed = existingCard.dateReviewed
+            color = convertRGBAToColor(existingCard.rgba)
+        }
+//        let paragraphStyle = NSMutableParagraphStyle()
+//        paragraphStyle.lineBreakMode = .byWordWrapping
+//        details.paragraphStyle = paragraphStyle
+        initialState = InitialState(dateReviewed: dateReviewed, answer: answer, details: AttributedString(details), category: category, personalNotes: personalNotes, color: color)
     }
     
     private func save() {
         if let cardToEdit = existingCard {
             cardToEdit.answer = answer
-            cardToEdit.details = details
+            cardToEdit.details = AttributedString(details)
             cardToEdit.category = category
             cardToEdit.personalNotes = personalNotes
             cardToEdit.dateReviewed = dateReviewed
             cardToEdit.rgba = convertColorToRGBA(color)
         } else {
-            let newCard = Card(dateReviewed: dateReviewed, answer: answer, details: details, category: category, personalNotes: personalNotes, rgba: convertColorToRGBA(color))
+            let newCard = Card(dateReviewed: dateReviewed, answer: answer, details: AttributedString(details), category: category, personalNotes: personalNotes, rgba: convertColorToRGBA(color))
             modelContext.insert(newCard)
+        }
+    }
+    
+    private func colorPickerView() -> some View {
+        HStack {
+            ForEach(colors.indices, id: \.self) { i in
+                Button {
+                    color = colors[i].opacity(0.4)
+                } label: {
+                    Circle()
+                        .fill(colors[i].opacity(0.4))
+                        .overlay(
+                            Circle()
+                                .fill(Color.clear)
+                                .stroke(Color.blue, lineWidth: color == colors[i].opacity(0.4) ? 5 : 0)
+                        )
+                }.buttonStyle(.borderless)
+            }
+        }
+    }
+    
+}
+
+struct TextEditorView: UIViewRepresentable {
+    @Binding var text: NSAttributedString
+    var geometry: GeometryProxy
+    
+    func makeUIView(context: Context) -> UITextView {
+        let textView = UITextView()
+        textView.isEditable = true
+        textView.font = UIFont.systemFont(ofSize: 17) // Default SwiftUI font size
+        textView.isScrollEnabled = false
+        textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        textView.delegate = context.coordinator
+        
+        textView.textContainer.lineFragmentPadding = 0
+        textView.textContainerInset = .zero
+        
+        return textView
+    }
+    
+    func updateUIView(_ uiView: UITextView, context: Context) {
+        //let selectedRange = uiView.selectedRange
+        uiView.attributedText = text
+        uiView.setNeedsLayout()
+        uiView.layoutIfNeeded()
+        //uiView.selectedRange = selectedRange
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
+            // Ensure a valid width is proposed by SwiftUI
+            guard let width = proposal.width else { return nil }
+            
+            
+            // Use the UITextView's sizeThatFits method for the calculation
+            let calculatedSize = uiView.sizeThatFits(
+                CGSize(width: width, height: .greatestFiniteMagnitude)
+            )
+            
+            // Return the size that the UITextView calculated
+        return CGSize(width: width, height: calculatedSize.height)
+        }
+    
+    class Coordinator: NSObject, UITextViewDelegate {
+        var parent: TextEditorView
+        
+        init(_ parent: TextEditorView) {
+            self.parent = parent
+        }
+        
+        func textViewDidChange(_ textView: UITextView) {
+            parent.text = textView.attributedText
+            //textView.invalidateIntrinsicContentSize()
         }
     }
     
