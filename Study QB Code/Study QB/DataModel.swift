@@ -8,7 +8,7 @@
 import Foundation
 import SwiftData
 
-enum Category: String, CaseIterable, Codable, Identifiable {
+enum Category: String, CaseIterable, Codable, Identifiable, Comparable {
     case lit = "Literature"
     case hist = "History"
     case sci = "Science"
@@ -22,6 +22,10 @@ enum Category: String, CaseIterable, Codable, Identifiable {
     
     var id: String {
         self.rawValue
+    }
+    
+    static func < (lhs: Category, rhs: Category) -> Bool {
+        return lhs.rawValue < rhs.rawValue
     }
     
 }
@@ -42,11 +46,11 @@ class Card {
     var dateReviewed: Date
     var answer: String
     var details: AttributedString
-    var category: Category?
+    var category: Category
     var personalNotes: String
     var rgba: [Double]
     
-    init(dateReviewed: Date, answer: String, details: AttributedString, category: Category?, personalNotes: String, rgba: [Double]) {
+    init(dateReviewed: Date, answer: String, details: AttributedString, category: Category, personalNotes: String, rgba: [Double]) {
         self.dateReviewed = dateReviewed
         self.answer = answer
         self.details = details

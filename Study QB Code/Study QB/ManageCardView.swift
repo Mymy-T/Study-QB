@@ -10,139 +10,65 @@ import SwiftUI
 
 struct ManageCardView: View {
     
-    @Environment(\.locale) var locale
-    @Environment(\.modelContext) var modelContext
-    
-    @Query(sort: [SortDescriptor(\Card.dateReviewed)]) var cards: [Card]
-    
     let geometry: GeometryProxy
     
-    @State private var showingDeleteAlert = false
-    @State private var cardToDelete: Card?
     @State private var searchText = ""
     @State private var categories: [Category] = []
-    
-    let columns = [GridItem(.flexible()), GridItem(.flexible())]
-    
-    var dateStrings: [String] {
-        var strings: [String] = []
-        for card in cards {
-            let dateFormatter = DateFormatter()
-            dateFormatter.locale = locale
-            dateFormatter.dateStyle = .medium
-            dateFormatter.timeStyle = .none
-            strings.append(dateFormatter.string(from: card.dateReviewed))
-        }
-        return strings
-    }
-    
-    var searchResults: [Card] {
-        let filteredCards = {
-            return cards.filter {
-                if let cardCategory = $0.category {
-                    return categories.contains(cardCategory)
-                } else {
-                    return true
-                }
-            }
-        }()
-            if searchText.isEmpty {
-                return filteredCards
-            } else {
-                return filteredCards.filter { $0.answer.localizedStandardContains(searchText) }
-            }
-        }
-    
+    @State private var sortParameter: SortParameter = .reviewDateForward
     
     var body: some View {
         NavigationStack {
             
-            ScrollView {
-                LazyVGrid(columns: columns) {
-                    ForEach(searchResults.enumerated(), id: \.offset) { index, card in
-                        NavigationLink {
-                            GeometryReader { geometry in
-                                CardEditorView(geometry: geometry, existingCard: card)
-                            }
-                        } label: {
-                            VStack {
-                                Text(card.answer)
-                                    .font(.title)
-                                    .minimumScaleFactor(0.33)
-                                    .bold()
-                                VStack {
-                                    Text("Reviewed on")
-                                    Text(dateStrings[index])
-                                        .bold()
-                                }
-                                if let cardCategory = card.category {
-                                    Text(cardCategory.rawValue)
-                                        .font(.caption)
-                                }
-                            }
-                            .foregroundStyle(.black)
-                            .padding()
-                            .frame(maxWidth: .infinity, maxHeight: geometry.size.height/4)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(convertRGBAToColor(card.rgba).gradient)
-                                )
-                                .onLongPressGesture(minimumDuration: 1) {
-                                    showingDeleteAlert = true
-                                    cardToDelete = card
-                                }
-                                .alert("Delete Card?", isPresented: $showingDeleteAlert) {
-                                    Button("No", role: .cancel) { }
-                                    Button("Yes", role: .destructive) {
-                                        guard let card = cardToDelete else {
-                                            print("Failed to delete card")
-                                            return
-                                        }
-                                        modelContext.delete(card)
-                                        cardToDelete = nil
-                                    }
-                                }
-                        }
-                        
-                    }
-                }.padding()
-            }.searchable(text: $searchText, prompt: "Search for a card")
+            ManageCardGrid(geometry: geometry, searchText: searchText, categories: categories, sortParameter: sortParameter)
+                .searchable(text: $searchText, prompt: "Search for a card")
                 .navigationTitle("Your Cards")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        // MARK: Categories Menu
-                        Menu {
-                            ForEach(Category.allCases) { category in
-                                CategorySelectionButton(buttonCategory: category, categories: $categories)
+                    
+                    ToolbarItemGroup(placement: .topBarLeading) {
+                        
+                        // MARK: Filter Menu
+                            Menu {
+                                ForEach(Category.allCases) { category in
+                                    CategorySelectionButton(buttonCategory: category, categories: $categories)
+                                }
+                                Divider()
+                                Button("Select All") {
+                                    categories.removeAll()
+                                    for category in Category.allCases {
+                                        categories.append(category)
+                                    }
+                                }
+                                Button("Remove All") {
+                                    categories.removeAll()
+                                }
+                            } label: {
+                                Image(systemName: "line.horizontal.3.decrease")
+                                    .foregroundStyle(.blue)
                             }
-                            Divider()
-                            Button("Select All") {
-                                categories.removeAll()
+                            .menuActionDismissBehavior(.disabled)
+                            .onAppear {
                                 for category in Category.allCases {
                                     categories.append(category)
                                 }
                             }
-                            Button("Remove All") {
-                                categories.removeAll()
+                        
+                        
+                        // MARK: Sort Picker
+                        Menu {
+                            ForEach(SortParameter.allCases) { sortParam in
+                                SortSelectionButton(sortParameter: sortParam, selectedSortParameter: $sortParameter)
                             }
                         } label: {
-                            Image(systemName: "line.horizontal.3.decrease")
+                            Image(systemName: "arrow.up.arrow.down")
                                 .foregroundStyle(.blue)
                         }
-                        .menuActionDismissBehavior(.disabled)
-                        .onAppear {
-                            for category in Category.allCases {
-                                categories.append(category)
-                            }
-                        }
                     }
-                    
                     
                     ToolbarItem(placement: .topBarTrailing) {
                         NavigationLink {
                             GeometryReader { geometry in
-                                CardEditorView(geometry: geometry, existingCard: nil)
+                                CardEditorView(geometry: geometry)
                             }
                         } label: {
                             Image(systemName: "plus")
@@ -152,16 +78,48 @@ struct ManageCardView: View {
         }
     }
     
-    private func getDateString(date: Date) -> String {
-        let dateString: String = {
-            let dateFormatter = DateFormatter()
-            dateFormatter.locale = locale
-            dateFormatter.dateStyle = .medium
-            dateFormatter.timeStyle = .short
-            return dateFormatter.string(from: date)
-        }()
-        return dateString
-    }
+    
+    
+//    private func getDateString(date: Date) -> String {
+//        let dateString: String = {
+//            let dateFormatter = DateFormatter()
+//            dateFormatter.locale = locale
+//            dateFormatter.dateStyle = .medium
+//            dateFormatter.timeStyle = .short
+//            return dateFormatter.string(from: date)
+//        }()
+//        return dateString
+//    }
     
 }
 
+struct SortSelectionButton: View {
+    let sortParameter: SortParameter
+    @Binding var selectedSortParameter: SortParameter
+    
+    var body: some View {
+        Button {
+            selectedSortParameter = sortParameter
+        } label: {
+            HStack {
+                Text(sortParameter.rawValue)
+                if selectedSortParameter == sortParameter {
+                    Image(systemName: "checkmark")
+                }
+            }
+        }
+    }
+}
+
+enum SortParameter: String, CaseIterable, Identifiable {
+    case reviewDateForward = "Oldest Reviewed"
+    case reviewDateReverse = "Most Recently Reviewed"
+    case titleAlphabeticalForward = "Alphabetical, by Title (A-Z)"
+    case titleAlphabeticalReverse = "Alphabetical, by Title (Z-A)"
+    case categoryAlphabeticalForward = "Alphabetical, by Category (A-Z)"
+    case categoryAlphabeticalReverse = "Alphabetical, by Category (Z-A)"
+    
+    var id: String {
+        self.rawValue
+    }
+}

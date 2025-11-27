@@ -11,7 +11,9 @@ struct ContentView: View {
     var body: some View {
         TabView {
             Tab("Analyze", systemImage: "magnifyingglass") {
-                AnalyzeView()
+                GeometryReader { geometry in
+                    AnalyzeView(geometry: geometry)
+                }
             }
             Tab("Manage Cards", systemImage: "note.text") {
                 GeometryReader { geometry in

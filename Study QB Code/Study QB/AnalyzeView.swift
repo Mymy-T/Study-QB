@@ -39,7 +39,13 @@ struct AnalyzeView: View {
     @State private var responseRecieved = false
     
     @State private var showEmptyQueryAlert = false
-    @State private var showCardSavedAlert = false
+//    @State private var showCardSavedAlert = false
+//    @State private var showCategoryPromptAlert = false
+//    @State private var showingSaveCardSheet = false
+//    @State private var selectedCategory: Category = .lit
+    
+    let geometry: GeometryProxy
+    
     
     var difficultyBounds: (Int, Int) {
         // (Low, High)
@@ -199,11 +205,9 @@ struct AnalyzeView: View {
                     Spacer()
                     
                     // MARK: Save Card
-                    Button {
-                        responseText.font = UIFont.systemFont(ofSize: 17)
-                        let newCard = Card(dateReviewed: Date.now, answer: answerQuery, details: responseText, category: nil, personalNotes: "", rgba: convertColorToRGBA(.red.opacity(0.4)))
-                        modelContext.insert(newCard)
-                        showCardSavedAlert = true
+                    
+                    NavigationLink {
+                        CardEditorView(geometry: geometry, answer: answerQuery, details: responseText)
                     } label: {
                         Text("Save")
                             .foregroundStyle(.white)
@@ -214,9 +218,43 @@ struct AnalyzeView: View {
                             )
                             .opacity(responseRecieved ? 1.0 : 0.0)
                     }
-                    .alert("Card Saved", isPresented: $showCardSavedAlert) {
-                        Button("Ok") { }
-                    }
+
+                    
+//                    Button {
+//                        //showCategoryPromptAlert = true
+//                        showingSaveCardSheet = true
+//                        responseText.font = UIFont.systemFont(ofSize: 17)
+//                    } label: {
+//                        Text("Save")
+//                            .foregroundStyle(.white)
+//                            .padding()
+//                            .background(
+//                                RoundedRectangle(cornerRadius: 10)
+//                                    .fill(Color.green.gradient)
+//                            )
+//                            .opacity(responseRecieved ? 1.0 : 0.0)
+//                    }
+//                    .fullScreenCover(isPresented: $showingSaveCardSheet, onDismiss: {
+//                        showCardSavedAlert = true
+//                    }, content: {
+//                        CardEditorView(geometry: geometry, answer: answerQuery, details: responseText)
+//                    })
+//                    .alert("Select Category", isPresented: $showCategoryPromptAlert) {
+//                        Picker("", selection: $selectedCategory) {
+//                            ForEach(Category.allCases) { category in
+//                                Text(category.rawValue)
+//                                    .tag(category)
+//                            }
+//                        }
+//                        Button("Save Card") {
+//                            responseText.font = UIFont.systemFont(ofSize: 17)
+//                            let newCard = Card(dateReviewed: Date.now, answer: answerQuery, details: responseText, category: selectedCategory, personalNotes: "", rgba: convertColorToRGBA(.red.opacity(0.4)))
+//                            modelContext.insert(newCard)
+//                        }
+//                    }
+//                    .alert("Card Saved", isPresented: $showCardSavedAlert) {
+//                        Button("Ok") { }
+//                    }
                     
                 }.padding()
                 

@@ -21,7 +21,7 @@ struct CardEditorView: View {
         var dateReviewed: Date
         var answer: String
         var details: AttributedString
-        var category: Category?
+        var category: Category
         var personalNotes: String
         var color: Color
     }
@@ -32,7 +32,7 @@ struct CardEditorView: View {
     @State private var answer = ""
     @State private var details = NSAttributedString()
 //    @State private var attributedTextSelection = AttributedTextSelection()
-    @State private var category: Category? = .lit
+    @State private var category: Category = .lit
     @State private var personalNotes = ""
     @State private var color: Color = .red.opacity(0.4)
     
@@ -58,10 +58,32 @@ struct CardEditorView: View {
         return existingCard != nil ? (!unsavedChangesPresent ? "Edit/View Card" : "Edit/View Card (unsaved changes)") : "Create Card"
     }
     
-    @State private var initialState = InitialState(dateReviewed: Date.now, answer: "", details: AttributedString(), personalNotes: "", color: .red.opacity(0.4))
+    @State private var initialState = InitialState(dateReviewed: Date.now, answer: "", details: AttributedString(), category: .lit, personalNotes: "", color: .red.opacity(0.4))
     
     
     let colors: [Color] = [.red, .orange, .yellow, .green, .teal, .blue, .indigo, .purple, .pink, .brown]
+    
+    // Creating a completely new card
+    init(geometry: GeometryProxy) {
+        self.geometry = geometry
+        existingCard = nil
+    }
+    
+    // Editing or viewing card that has already been created
+    init(geometry: GeometryProxy, existingCard: Card) {
+        self.geometry = geometry
+        self.existingCard = existingCard
+    }
+    
+    // Creating a new card from AnalyzeView
+    init(geometry: GeometryProxy, answer: String, details: AttributedString) {
+        self.geometry = geometry
+        self.answer = answer
+        var formattedDetails = details
+        formattedDetails.font = UIFont.systemFont(ofSize: 17)
+        self.details = NSAttributedString(formattedDetails)
+        existingCard = nil
+    }
     
     var body: some View {
         Form {
