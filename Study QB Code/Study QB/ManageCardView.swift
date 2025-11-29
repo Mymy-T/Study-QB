@@ -102,6 +102,7 @@ struct SortSelectionButton: View {
             selectedSortParameter = sortParameter
         } label: {
             HStack {
+                
                 Text(sortParameter.rawValue)
                 if selectedSortParameter == sortParameter {
                     Image(systemName: "checkmark")

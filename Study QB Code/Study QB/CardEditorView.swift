@@ -41,6 +41,8 @@ struct CardEditorView: View {
     
     @State private var refresh = false // Only modified to trigger view reload
     
+    @State private var initialCategoryAssigned = false // This is true until the category of a saved card is loaded; when this setting is true, the color of the card can be editing by switching categories.
+    
     var dateString: String {
         let dateFormatter = DateFormatter()
         dateFormatter.locale = locale
@@ -61,7 +63,7 @@ struct CardEditorView: View {
     @State private var initialState = InitialState(dateReviewed: Date.now, answer: "", details: AttributedString(), category: .lit, personalNotes: "", color: .red.opacity(0.4))
     
     
-    let colors: [Color] = [.red, .orange, .yellow, .green, .teal, .blue, .indigo, .purple, .pink, .brown]
+    
     
     // Creating a completely new card
     init(geometry: GeometryProxy) {
@@ -96,6 +98,8 @@ struct CardEditorView: View {
                         Text(category.rawValue)
                             .tag(category)
                     }
+                }.onChange(of: category) { _, _ in
+                    updateColorUponCategoryChange()
                 }
             }
             Section("Select Color") {
@@ -184,6 +188,7 @@ struct CardEditorView: View {
             .toolbarVisibility(.hidden, for: .tabBar)
     }
     
+    // MARK: loadAndPreprocess()
     private func loadAndPreprocess() {
         if let existingCard = existingCard {
             answer = existingCard.answer
@@ -192,6 +197,7 @@ struct CardEditorView: View {
             personalNotes = existingCard.personalNotes
             dateReviewed = existingCard.dateReviewed
             color = convertRGBAToColor(existingCard.rgba)
+            initialCategoryAssigned = false
         }
 //        let paragraphStyle = NSMutableParagraphStyle()
 //        paragraphStyle.lineBreakMode = .byWordWrapping
@@ -199,6 +205,7 @@ struct CardEditorView: View {
         initialState = InitialState(dateReviewed: dateReviewed, answer: answer, details: AttributedString(details), category: category, personalNotes: personalNotes, color: color)
     }
     
+    // MARK: save()
     private func save() {
         if let cardToEdit = existingCard {
             cardToEdit.answer = answer
@@ -213,6 +220,27 @@ struct CardEditorView: View {
         }
     }
     
+    // MARK: updateColorUponCategoryChange
+    private func updateColorUponCategoryChange() {
+        if existingCard != nil {
+            if initialCategoryAssigned {
+                let i = colorIndexFromCategory(category)
+                color = colors[i].opacity(0.4)
+            } else {
+                if existingCard!.category == .lit {
+                    // Since the initialization of category sets it to .lit, loading a category of .lit from an existing card won't cause the .onChange closure to run. Therefore, an exception needs to be made to set initialCategoryAssigned to true for cards with a saved category of .lit
+                    let i = colorIndexFromCategory(category)
+                    color = colors[i].opacity(0.4)
+                }
+                initialCategoryAssigned = true
+            }
+        } else {
+            let i = colorIndexFromCategory(category)
+            color = colors[i].opacity(0.4)
+        }
+    }
+    
+    // MARK: colorPickerView
     private func colorPickerView() -> some View {
         HStack {
             ForEach(colors.indices, id: \.self) { i in
@@ -233,6 +261,7 @@ struct CardEditorView: View {
     
 }
 
+// MARK: Text Editor View
 struct TextEditorView: UIViewRepresentable {
     @Binding var text: NSAttributedString
     var geometry: GeometryProxy

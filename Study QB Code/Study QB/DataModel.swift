@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftData
+import SwiftUI
 
 enum Category: String, CaseIterable, Codable, Identifiable, Comparable {
     case lit = "Literature"
@@ -40,6 +41,8 @@ enum  Difficulty: String, Codable, CaseIterable, Identifiable {
     }
     
 }
+
+let colors: [Color] = [.red, .orange, .yellow, .green, .teal, .blue, .indigo, .purple, .pink, .brown]
 
 @Model
 class Card {

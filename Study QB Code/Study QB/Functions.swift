@@ -26,3 +26,13 @@ func convertColorToRGBA(_ color: Color) -> [Double] {
         return [255, 255, 255, 1] // white
     }
 }
+
+func colorIndexFromCategory(_ category: Category) -> Int {
+    var categoryColorDict: [Category: Int] = [:]
+    var i = 0
+    for category in Category.allCases {
+        categoryColorDict[category] = i
+        i += 1
+    }
+    return categoryColorDict[category]!
+}
