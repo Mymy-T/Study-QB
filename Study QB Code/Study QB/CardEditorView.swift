@@ -9,6 +9,8 @@ import SwiftData
 import SwiftUI
 import UIKit
 
+// TODO: Add bold, italic, and underline buttons to details Text Editor keyboard toolbar for easy access
+
 struct CardEditorView: View {
     
     @Environment(\.dismiss) var dismiss
@@ -118,11 +120,22 @@ struct CardEditorView: View {
             
             // MARK: Details
                 Section("Details") {
-                    //                TextEditor(text: $details, selection: $attributedTextSelection)
-                    //                //.frame(height: geometry.size.height/2)
-                    //                    .scrollDisabled(true)
-                    //                    .focused($editingDetails)
-                    TextEditorView(text: $details, geometry: geometry)
+                    TextEditorView(text: $details, geometry: geometry) {
+                        HStack {
+                            Spacer()
+                            Button("Done") {
+                                if editingDetails {
+                                    editingDetails = false
+                                }
+                            }.padding(5)
+                                .tint(.green)
+                        }.padding(5)
+                            .glassEffect()
+                            //.background(Color.gray)
+                        .frame(width: geometry.size.width * 0.9)
+                        //.clipShape(Capsule())
+                        
+                    }
                         //.frame(width: geometry.size.width * 0.9)
                         .frame(maxWidth: .infinity)
                         .frame(minHeight: geometry.size.height * 0.1)
@@ -170,7 +183,7 @@ struct CardEditorView: View {
                     }
                     .tint(.green)
                 }
-                ToolbarItem(placement: .keyboard) {
+                ToolbarItemGroup(placement: .keyboard) {
                     HStack {
                         Spacer()
                         Button("Done") {
@@ -262,27 +275,35 @@ struct CardEditorView: View {
 }
 
 // MARK: Text Editor View
-struct TextEditorView: UIViewRepresentable {
+struct TextEditorView<ToolbarView: View>: UIViewRepresentable {
     @Binding var text: NSAttributedString
     var geometry: GeometryProxy
+    let toolbar: () -> ToolbarView
     
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
+        let hostingVC = UIHostingController(rootView: toolbar())
         textView.isEditable = true
         textView.font = UIFont.systemFont(ofSize: 17) // Default SwiftUI font size
+        textView.allowsEditingTextAttributes = true
         textView.isScrollEnabled = false
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         textView.delegate = context.coordinator
+        textView.attributedText = text
         
         textView.textContainer.lineFragmentPadding = 0
         textView.textContainerInset = .zero
+        
+        hostingVC.view.backgroundColor = .clear
+        textView.inputAccessoryView = hostingVC.view
+        textView.inputAccessoryView?.translatesAutoresizingMaskIntoConstraints = false
         
         return textView
     }
     
     func updateUIView(_ uiView: UITextView, context: Context) {
         //let selectedRange = uiView.selectedRange
-        uiView.attributedText = text
+        //uiView.attributedText = text
         uiView.setNeedsLayout()
         uiView.layoutIfNeeded()
         //uiView.selectedRange = selectedRange
