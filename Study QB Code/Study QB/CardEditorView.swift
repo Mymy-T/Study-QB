@@ -41,6 +41,9 @@ struct CardEditorView: View {
     @FocusState private var editingDetails: Bool
     @FocusState private var editingPersonalNotes: Bool
     
+    @State private var bold = false
+    @State private var boldButtonPressed = false
+    
     @State private var refresh = false // Only modified to trigger view reload
     
     @State private var initialCategoryAssigned = false // This is true until the category of a saved card is loaded; when this setting is true, the color of the card can be editing by switching categories.
@@ -112,7 +115,6 @@ struct CardEditorView: View {
                     TextEditor(text: $personalNotes)
                         .scrollDisabled(true)
                         .focused($editingPersonalNotes)
-                    //.frame(height: geometry.size.height/5)
                     Text("Add any personal notes here.")
                         .opacity(personalNotes.trimmingCharacters(in: .whitespacesAndNewlines) == "" ? 0.3 : 0)
                 }
@@ -120,26 +122,11 @@ struct CardEditorView: View {
             
             // MARK: Details
                 Section("Details") {
-                    TextEditorView(text: $details, geometry: geometry) {
-                        HStack {
-                            Spacer()
-                            Button("Done") {
-                                if editingDetails {
-                                    editingDetails = false
-                                }
-                            }.padding(5)
-                                .tint(.green)
-                        }.padding(5)
-                            .glassEffect()
-                            //.background(Color.gray)
-                        .frame(width: geometry.size.width * 0.9)
-                        //.clipShape(Capsule())
-                        
+                    TextEditorView(text: $details, bold: $bold, boldButtonPressed: $boldButtonPressed, geometry: geometry) {
+                        keyboardToolbarView()
                     }
-                        //.frame(width: geometry.size.width * 0.9)
                         .frame(maxWidth: .infinity)
                         .frame(minHeight: geometry.size.height * 0.1)
-                        //.border(.green)
                         .focused($editingDetails)
                 }
             
@@ -272,11 +259,35 @@ struct CardEditorView: View {
         }
     }
     
+    // MARK: keyboardToolbarView
+    private func keyboardToolbarView() -> some View {
+        HStack {
+            Button {
+                boldButtonPressed = true
+            } label: {
+                Image(systemName: "bold")
+                    .padding(5)
+                    .tint(bold ? .blue : .gray)
+            }
+            Spacer()
+            Button("Done") {
+                if editingDetails {
+                    editingDetails = false
+                }
+            }.padding(5)
+                .tint(.green)
+        }.padding(5)
+            .glassEffect()
+        .frame(width: geometry.size.width * 0.9)
+    }
+    
 }
 
 // MARK: Text Editor View
 struct TextEditorView<ToolbarView: View>: UIViewRepresentable {
     @Binding var text: NSAttributedString
+    @Binding var bold: Bool
+    @Binding var boldButtonPressed: Bool
     var geometry: GeometryProxy
     let toolbar: () -> ToolbarView
     
@@ -306,7 +317,49 @@ struct TextEditorView<ToolbarView: View>: UIViewRepresentable {
         //uiView.attributedText = text
         uiView.setNeedsLayout()
         uiView.layoutIfNeeded()
+        if boldButtonPressed {
+            context.coordinator.boldButtonPress(uiView)
+        }
         //uiView.selectedRange = selectedRange
+//        if boldButtonPressed {
+//            if let selectedRange = uiView.selectedTextRange {
+//                if !selectedRange.isEmpty {
+//                    // Execute the following if some text is selected
+//                    
+//                    let attributedString = NSMutableAttributedString(uiView.attributedText)
+//                    
+//                    let nsRange = NSRange(location: uiView.offset(from: uiView.beginningOfDocument, to: selectedRange.start), length: uiView.offset(from: selectedRange.start, to: selectedRange.end))
+//                    
+//                    if bold {
+//                        attributedString.enumerateAttribute(.font, in: nsRange) { attribute, range, stop in
+//                            if let oldFont = attribute as? UIFont {
+//                                let newFont = UIFont.systemFont(ofSize: oldFont.pointSize, weight: .regular)
+//                                attributedString.addAttributes([.font: newFont], range: range)
+//                            }
+//                        }
+//                    } else {
+//                        attributedString.enumerateAttribute(.font, in: nsRange) { attribute, range, stop in
+//                            if let oldFont = attribute as? UIFont {
+//                                let newFont = UIFont.systemFont(ofSize: oldFont.pointSize, weight: .bold)
+//                            }
+//                        }
+//                    }
+//                    
+//                    
+//                } else {
+//                    // Otherwise, execute this if no text is selected (just a cursor)
+//                    let newBoldValue = !bold // Execute button action first
+//                    if newBoldValue {
+//                        //uiView.font = UIF TODO: change font to regular
+//                    }
+//                    
+//                }
+//                
+//            }
+//            boldButtonPressed = false
+//            bold.toggle()
+//        }
+        
     }
     
     func makeCoordinator() -> Coordinator {
@@ -338,6 +391,89 @@ struct TextEditorView<ToolbarView: View>: UIViewRepresentable {
             parent.text = textView.attributedText
             //textView.invalidateIntrinsicContentSize()
         }
+        
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            parent.bold = selectionIsBold(textView)
+        }
+        
+        func selectionIsBold(_ textView: UITextView) -> Bool {
+            var selectionBold = true // Initially, before enumerate attribute is run
+            if let selectedRange = textView.selectedTextRange {
+                let nsRange = NSRange(location: textView.offset(from: textView.beginningOfDocument, to: selectedRange.start), length: textView.offset(from: selectedRange.start, to: selectedRange.end))
+                
+                textView.attributedText.enumerateAttribute(.font, in: nsRange) { attribute, range, stop in
+                    if let font = attribute as? UIFont {
+                        if font.fontDescriptor.symbolicTraits.contains(.traitBold) == false {
+                            // If any part of the selection isn't bold, then the selection isn't considered bold
+                            selectionBold = false
+                            stop.pointee = true // Stop the enumeration
+                        }
+                    } else {
+                        // This shouldn't happen, this is if there is not font attribute
+                        selectionBold = false
+                        stop.pointee = true // Stop the enumeration
+                    }
+                }
+                
+            } else {
+                selectionBold = false
+            }
+            return selectionBold
+        }
+        
+        
+        func boldButtonPress(_ textView: UITextView) {
+            
+            parent.boldButtonPressed = false
+            
+            if let selectedRange = textView.selectedTextRange {
+                if !selectedRange.isEmpty {
+                    // Execute the following if some text is selected
+                    
+                    let attributedString = NSMutableAttributedString(attributedString: textView.attributedText)
+                    
+                    let nsRange = NSRange(location: textView.offset(from: textView.beginningOfDocument, to: selectedRange.start), length: textView.offset(from: selectedRange.start, to: selectedRange.end))
+                    
+                    if parent.bold {
+                        attributedString.enumerateAttribute(.font, in: nsRange) { attribute, range, stop in
+                            if let oldFont = attribute as? UIFont {
+                                let newFont = UIFont.systemFont(ofSize: oldFont.pointSize, weight: .regular)
+                                attributedString.addAttributes([.font: newFont], range: range)
+                            }
+                        }
+                        parent.bold = false
+                    } else {
+                        attributedString.enumerateAttribute(.font, in: nsRange) { attribute, range, stop in
+                            if let oldFont = attribute as? UIFont {
+                                let newFont = UIFont.systemFont(ofSize: oldFont.pointSize, weight: .bold)
+                                attributedString.addAttributes([.font: newFont], range: range)
+                            }
+                        }
+                        parent.bold = true
+                    }
+                    
+                    
+                } else {
+                    // Otherwise, execute this if no text is selected (just a cursor)
+                    let newBoldValue = !parent.bold // Execute button action first
+                    var oldFont: UIFont
+                    if textView.font != nil {
+                        oldFont = textView.font!
+                    } else {
+                        oldFont = UIFont.systemFont(ofSize: 17)
+                    }
+                    if newBoldValue {
+                        textView.typingAttributes[.font] = UIFont.systemFont(ofSize: oldFont.pointSize, weight: .bold)
+                    } else {
+                        textView.typingAttributes[.font] = UIFont.systemFont(ofSize: oldFont.pointSize, weight: .regular)
+                    }
+                    
+                    parent.bold = newBoldValue
+                    
+                }
+            }
+        }
+        
     }
     
 }
