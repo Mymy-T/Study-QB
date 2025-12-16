@@ -47,17 +47,17 @@ struct AnalyzeView: View {
     let geometry: GeometryProxy
     
     
-    var difficultyBounds: (Int, Int) {
-        // (Low, High)
-        switch difficulty {
-        case .ms:
-            return (1, 1)
-        case .hs:
-            return (2, 5)
-        case .col:
-            return (6, 9)
-        }
-    }
+//    var difficultyBounds: (Int, Int) {
+//        // (Low, High)
+//        switch difficulty {
+//        case .ms:
+//            return (1, 1)
+//        case .hs:
+//            return (2, 5)
+//        case .col:
+//            return (6, 9)
+//        }
+//    }
     
     
     let model = FirebaseAI.firebaseAI(backend: .googleAI()).generativeModel(modelName: "gemini-2.5-flash-lite")
@@ -327,9 +327,9 @@ struct AnalyzeView: View {
     
     private func processFetchedData(_ data: [Question]) -> String {
         // Converts the data into a string to feed into llm
-        var processedDataString = "Given these quizbowl questions, can you find common clues (appearing at least 3 times in all the clues) between them? The answer is \(answerQuery). For the following questions, the easiest difficulty is \(difficultyBounds.0) and the hardest difficulty is \(difficultyBounds.1), where the difficulty increases with the number. Order the clues by those that appear more often at easier difficulties to those that appear more often in harder difficulties. Within each question, harder clues will appear earlier in the question, so take that into account as well. Each question in the prompt will be separated from the next by 'END QUESTION'. Use new lines (\n) to separate clues (do not use bullet points). Separate your response into easy, medium, and hard difficulties, and provide a brief description (at most 5 sentences) of each clue you found and tie related clues together to provide the big picture. Bold each clue and difficulty, but not the description. Do not generate any extraneous information about the question number of difficulty number. The questions are as follows: "
+        var processedDataString = "Given these quizbowl questions, can you find common clues between them? The answer is \(answerQuery). Within the prompt, the questions will be delineated by the words END QUESTION. Order the clues so that those that appear the most frequently are listed first. Display the total number of times each clue appears in the questions with parentheses next to the clue. Do not list clues that appear only two times or less in your response. Omit clues that appear less than three times in your response. Use new lines (\n) to separate clues. Provide a brief description of each clue you found, connecting the clues with each other if they are related. Do not explain why you chose each clue in the descriptions. Bold each clue. Do not bold the descriptions. Do not generate any extraneous information about the questions. The questions are as follows: "
         for i in data.indices {
-            processedDataString += "This is question number \(i + 1). The difficulty is \(data[i].difficulty). The answer is \(data[i].answer_sanitized). The question is as follows: \(data[i].question_sanitized) END QUESTION. "
+            processedDataString += "This is question number \(i + 1). The answer is \(data[i].answer_sanitized). The question is as follows: \(data[i].question_sanitized) END QUESTION. "
         }
         
         return processedDataString
