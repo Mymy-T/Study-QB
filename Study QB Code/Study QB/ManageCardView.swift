@@ -117,8 +117,8 @@ enum SortParameter: String, CaseIterable, Identifiable {
     case reviewDateReverse = "Most Recently Reviewed"
     case titleAlphabeticalForward = "Alphabetical, by Title (A-Z)"
     case titleAlphabeticalReverse = "Alphabetical, by Title (Z-A)"
-    case categoryAlphabeticalForward = "Alphabetical, by Category (A-Z)"
-    case categoryAlphabeticalReverse = "Alphabetical, by Category (Z-A)"
+//    case categoryAlphabeticalForward = "Alphabetical, by Category (A-Z)"
+//    case categoryAlphabeticalReverse = "Alphabetical, by Category (Z-A)"
     
     var id: String {
         self.rawValue

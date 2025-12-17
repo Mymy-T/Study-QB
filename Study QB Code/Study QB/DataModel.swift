@@ -52,6 +52,13 @@ class Card {
     var category: Category
     var personalNotes: String
     var rgba: [Double]
+    var categoryString: String {
+        return category.rawValue
+    }
+    
+//    var categoryString: String {
+//        category.rawValue
+//    }
     
     init(dateReviewed: Date, answer: String, details: AttributedString, category: Category, personalNotes: String, rgba: [Double]) {
         self.dateReviewed = dateReviewed
