@@ -17,8 +17,11 @@ struct ContentView: View {
             }
             Tab("Manage Cards", systemImage: "note.text") {
                 GeometryReader { geometry in
-                    ManageCardView(geometry: geometry)
+                    ManageCardView(geometry: geometry, editingMode: true, manuallySelectedCards: .constant(nil))
                 }
+            }
+            Tab("Review Cards", systemImage: "timer") {
+                ReviewView()
             }
         }
     }

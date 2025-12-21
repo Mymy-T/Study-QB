@@ -10,6 +10,7 @@ import SwiftUI
 import UIKit
 
 // TODO: Add bold, italic, and underline buttons to details Text Editor keyboard toolbar for easy access; utilize keyboard toolbar if so (in the future potentially, not an essential feature)
+// TODO: Dismissing answerline keyboard
 
 struct CardEditorView: View {
     
@@ -38,6 +39,7 @@ struct CardEditorView: View {
     @State private var personalNotes = ""
     @State private var color: Color = .red.opacity(0.4)
     
+    @FocusState private var editingAnswer: Bool
     @FocusState private var editingDetails: Bool
     @FocusState private var editingPersonalNotes: Bool
     
@@ -93,16 +95,18 @@ struct CardEditorView: View {
         Form {
             Section("Answer Line") {
                 TextField("", text: $answer, prompt: Text("Enter the answerline of the question"))
+                    .focused($editingAnswer)
             }
             Section("Category") {
                 Picker("Select a category", selection: $category) {
                     ForEach(Category.allCases) { category in
                         Text(category.rawValue)
                             .tag(category)
-                    }
+                    }.padding()
                 }.onChange(of: category) { _, _ in
                     updateColorUponCategoryChange()
                 }
+                .buttonStyle(.plain)
             }
             Section("Select Color") {
                 colorPickerView()
@@ -119,7 +123,9 @@ struct CardEditorView: View {
             
             // MARK: Details
                 Section("Details") {
-                    TextEditorView(text: $details, geometry: geometry)
+                    TextEditorView(text: $details, geometry: geometry) {
+                        keyboardToolbarView()
+                    }
                         .frame(maxWidth: .infinity)
                         .frame(minHeight: geometry.size.height * 0.1)
                         .focused($editingDetails)
@@ -149,10 +155,14 @@ struct CardEditorView: View {
                     .fill(color)
                     .ignoresSafeArea()
             )
-            .onTapGesture {
-                editingDetails = false
-                editingPersonalNotes = false
-            }
+//            .onTapGesture {
+//                if editingDetails {
+//                    editingDetails = false
+//                }
+//                if editingPersonalNotes {
+//                    editingPersonalNotes = false
+//                }
+//            }
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
@@ -183,6 +193,19 @@ struct CardEditorView: View {
 //                            .tint(.green)
 //                    }
 //                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    HStack {
+                        Spacer()
+                        Button("Done") {
+                            if editingPersonalNotes {
+                                editingPersonalNotes = false
+                            }
+                            if editingAnswer {
+                                editingAnswer = false
+                            }
+                        }
+                    }
+                }
             }
             .toolbarVisibility(.hidden, for: .tabBar)
     }
@@ -258,12 +281,29 @@ struct CardEditorView: View {
         }
     }
     
+    // MARK: keyboardToolbarView
+    private func keyboardToolbarView() -> some View {
+        HStack {
+            Spacer()
+            Button("Done") {
+                if editingDetails {
+                    editingDetails = false
+                }
+            }//.padding(5)
+                .tint(.green)
+                .glassEffect()
+        }//.padding(5)
+            
+//        .frame(width: geometry.size.width * 0.9)
+    }
+    
 }
 
 // MARK: Text Editor View
-struct TextEditorView: UIViewRepresentable {
+struct TextEditorView<ToolbarView: View>: UIViewRepresentable {
     @Binding var text: NSAttributedString
     var geometry: GeometryProxy
+    let toolbar: () -> ToolbarView
     
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
@@ -277,6 +317,11 @@ struct TextEditorView: UIViewRepresentable {
         
         textView.textContainer.lineFragmentPadding = 0
         textView.textContainerInset = .zero
+        
+        let hostingVC = UIHostingController(rootView: toolbar())
+        hostingVC.view.backgroundColor = .clear
+        textView.inputAccessoryView = hostingVC.view
+        textView.inputAccessoryView?.translatesAutoresizingMaskIntoConstraints = false
         
         return textView
     }

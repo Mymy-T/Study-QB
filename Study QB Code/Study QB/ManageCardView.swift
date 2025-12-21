@@ -11,17 +11,20 @@ import SwiftUI
 struct ManageCardView: View {
     
     let geometry: GeometryProxy
+    let editingMode: Bool
     
     @State private var searchText = ""
     @State private var categories: [Category] = []
     @State private var sortParameter: SortParameter = .reviewDateForward
     
+    @Binding var manuallySelectedCards: [Card]?
+    
     var body: some View {
         NavigationStack {
             
-            ManageCardGrid(geometry: geometry, searchText: searchText, categories: categories, sortParameter: sortParameter)
+            ManageCardGrid(geometry: geometry, searchText: searchText, categories: categories, editingMode: editingMode, sortParameter: sortParameter, manuallySelectedCards: $manuallySelectedCards)
                 .searchable(text: $searchText, prompt: "Search for a card")
-                .navigationTitle("Your Cards")
+                .navigationTitle(editingMode ? "Your Cards" : "\(manuallySelectedCards!.count) selected")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     
@@ -65,14 +68,16 @@ struct ManageCardView: View {
                         }
                     }
                     
-                    ToolbarItem(placement: .topBarTrailing) {
-                        NavigationLink {
-                            GeometryReader { geometry in
-                                CardEditorView(geometry: geometry)
-                            }
-                        } label: {
-                            Image(systemName: "plus")
-                        }.tint(.green)
+                    if editingMode {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            NavigationLink {
+                                GeometryReader { geometry in
+                                    CardEditorView(geometry: geometry)
+                                }
+                            } label: {
+                                Image(systemName: "plus")
+                            }.tint(.green)
+                        }
                     }
                 }
         }

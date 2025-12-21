@@ -15,6 +15,8 @@ struct ManageCardGrid: View {
     
     let geometry: GeometryProxy
     let columns = [GridItem(.flexible()), GridItem(.flexible())]
+    let editingMode: Bool
+    @Binding var manuallySelectedCards: [Card]?
     
     @State private var showingDeleteAlert = false
     @State private var cardToDelete: Card?
@@ -53,48 +55,46 @@ struct ManageCardGrid: View {
            if searchResults.count != 0 {
                LazyVGrid(columns: columns) {
                    ForEach(searchResults.enumerated(), id: \.offset) { index, card in
-                       NavigationLink {
-                           GeometryReader { geometry in
-                               CardEditorView(geometry: geometry, existingCard: card)
-                           }
-                       } label: {
-                           VStack {
-                               Text(card.answer)
-                                   .font(.title)
-                                   .minimumScaleFactor(0.33)
-                                   .bold()
-                               VStack {
-                                   Text("Reviewed on")
-                                   Text(dateStrings[index])
-                                       .bold()
+                       if editingMode {
+                           // Presented when the "Manage Cards" tab is clicked
+                           NavigationLink {
+                               GeometryReader { geometry in
+                                   CardEditorView(geometry: geometry, existingCard: card)
                                }
-                               Text(card.category.rawValue)
-                                   .font(.caption)
-                           }
-                           .foregroundStyle(.black)
-                           .padding()
-                           .frame(maxWidth: .infinity, maxHeight: geometry.size.height/4)
-                           .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(convertRGBAToColor(card.rgba).gradient)
-                           )
-                           .onLongPressGesture(minimumDuration: 1) {
-                               showingDeleteAlert = true
-                               cardToDelete = card
-                           }
-                           .alert("Delete Card?", isPresented: $showingDeleteAlert) {
-                               Button("No", role: .cancel) { }
-                               Button("Yes", role: .destructive) {
-                                   guard let card = cardToDelete else {
-                                       print("Failed to delete card")
-                                       return
+                           } label: {
+                               cardLabel(card: card, index: index)
+                                   .onLongPressGesture(minimumDuration: 1) {
+                                       showingDeleteAlert = true
+                                       cardToDelete = card
                                    }
-                                   modelContext.delete(card)
-                                   cardToDelete = nil
+                                   .alert("Delete Card?", isPresented: $showingDeleteAlert) {
+                                       Button("No", role: .cancel) { }
+                                       Button("Yes", role: .destructive) {
+                                           guard let card = cardToDelete else {
+                                               print("Failed to delete card")
+                                               return
+                                           }
+                                           modelContext.delete(card)
+                                           cardToDelete = nil
+                                       }
+                                   }
+                           }
+                       } else {
+                           // Presented when user is manually selecting cards to review
+                           // manuallySelectedCards will exist in this case
+                           Button {
+                               if manuallySelectedCards!.contains(card) {
+                                   manuallySelectedCards!.removeAll {
+                                       $0.persistentModelID == card.persistentModelID
+                                   }
+                               } else {
+                                   manuallySelectedCards?.append(card)
                                }
+                           } label: {
+                               cardLabel(card: card, index: index)
+                                   .border(.blue.opacity(0.4), width: manuallySelectedCards!.contains(card) ? 4 : 0)
                            }
                        }
-                       
                    }
                }.padding()
            } else {
@@ -103,10 +103,11 @@ struct ManageCardGrid: View {
         }
     }
     
-    init(geometry: GeometryProxy, searchText: String, categories: [Category], sortParameter: SortParameter) {
+    init(geometry: GeometryProxy, searchText: String, categories: [Category], editingMode: Bool, sortParameter: SortParameter, manuallySelectedCards: Binding<[Card]?>) {
         self.geometry = geometry
         self.searchText = searchText
         self.categories = categories
+        self.editingMode = editingMode
         switch sortParameter {
         case .reviewDateReverse:
             let sortDescriptor = SortDescriptor(\Card.dateReviewed, order: .reverse)
@@ -127,6 +128,31 @@ struct ManageCardGrid: View {
 //            let sortDescriptor = SortDescriptor(\Card.category.rawValue, order: .reverse)
 //            _cards = Query(sort: [sortDescriptor])
         }
+        self._manuallySelectedCards = manuallySelectedCards
+    }
+    
+    
+    private func cardLabel(card: Card, index: Int) -> some View {
+        return VStack {
+            Text(card.answer)
+                .font(.title)
+                .minimumScaleFactor(0.33)
+                .bold()
+            VStack {
+                Text("Reviewed on")
+                Text(dateStrings[index])
+                    .bold()
+            }
+            Text(card.category.rawValue)
+                .font(.caption)
+        }
+        .foregroundStyle(.black)
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: geometry.size.height/4)
+        .background(
+         RoundedRectangle(cornerRadius: 10)
+             .fill(convertRGBAToColor(card.rgba).gradient)
+        )
     }
     
     

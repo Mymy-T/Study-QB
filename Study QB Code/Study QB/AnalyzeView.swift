@@ -217,6 +217,7 @@ struct AnalyzeView: View {
                                     .fill(Color.green.gradient)
                             )
                             .opacity(responseRecieved ? 1.0 : 0.0)
+                            .disabled(!responseRecieved)
                     }
 
                     
