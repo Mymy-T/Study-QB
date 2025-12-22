@@ -21,8 +21,13 @@ struct ReviewView: View {
     @State private var manuallySelectedCards: [Card] = []
     @State private var showingManualSelectionView = false
     
+    @State private var shuffleCards = false
+    
     @State private var showingCardNumberAlert = false
     @State private var cardNumberAlertMessage = ""
+    
+    @State private var practicing = false
+    @State private var cardsToReview: [Card] = []
     
     var manualSelectionDescription: String {
         var description = ""
@@ -132,24 +137,16 @@ struct ReviewView: View {
                                 }
                             }
                             
-//                            NavigationLink {
-//                                GeometryReader { geometry in
-//                                    ManageCardView(geometry: geometry, editingMode: false, manuallySelectedCards: Binding.init($manuallySelectedCards))
-//                                }
-//                            } label: {
-//                                Text("Edit Selection")
-//                                    .foregroundStyle(.white)
-//                                    .bold()
-//                                    .padding()
-//                                    .background(
-//                                        RoundedRectangle(cornerRadius: 10)
-//                                            .fill(Color.green.gradient)
-//                                    )
-//                            }
-                            
                         }
                     }
 
+                }
+                
+                // MARK: Practice Options
+                Section("Practice Options") {
+                    Toggle(isOn: $shuffleCards) {
+                        Text("Shuffle cards when reviewing?")
+                    }
                 }
                 
                 Section("Begin Practice") {
@@ -161,9 +158,8 @@ struct ReviewView: View {
                             showingCardNumberAlert = true
                             return
                         }
-                        let cardsToReview = getReviewCards()
-                        
-                        // TODO: Start review; make new view
+                        cardsToReview = getReviewCards()
+                        practicing = true
                         
                         
                     } label: {
@@ -176,7 +172,6 @@ struct ReviewView: View {
                                     .fill(Color.green.gradient)
                             )
                     }.buttonStyle(.borderless)
-
                 }
                 
                 Section("Save/Load Practice Configuration") {
@@ -186,6 +181,9 @@ struct ReviewView: View {
             }
             .navigationTitle("Review")
                 .navigationBarTitleDisplayMode(.inline)
+                .navigationDestination(isPresented: $practicing) {
+                    PracticeView(reviewCards: cardsToReview, shuffle: shuffleCards)
+                }
                 .toolbar {
                     ToolbarItem(placement: .keyboard) {
                         HStack {
