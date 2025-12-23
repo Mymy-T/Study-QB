@@ -63,6 +63,7 @@ struct PracticeView: View {
         
     }
     
+    // MARK: getNextCard
     private func getNextCard(current: Card, shuffle: Bool) -> Card {
         if shuffle {
             if reviewCards.count > 1 {
@@ -83,8 +84,9 @@ struct PracticeView: View {
                 print("Error: currentCard not in reviewCards")
                 return current
             }
-            if currentIndex < reviewCards.count - 1 {
+            if currentIndex + 1 < reviewCards.count {
                 return reviewCards[currentIndex + 1]
+                
             } else {
                 return reviewCards[0]
             }
@@ -94,7 +96,7 @@ struct PracticeView: View {
     
 }
 
-
+// MARK: CardView
 struct CardView: View {
     
     let geometry: GeometryProxy
@@ -109,8 +111,17 @@ struct CardView: View {
         currentCard.answer
     }
     
+//    var cardText: String {
+//        if answerRevealed {
+//            return currentCard.answer
+//        } else {
+//            return currentCard.personalNotes
+//        }
+//    }
+    
     var body: some View {
         VStack {
+            
             ScrollView {
                 Text(question)
                     .padding()
@@ -119,10 +130,17 @@ struct CardView: View {
                     }
             }
             .frame(width: geometry.size.width * 0.8, height: geometry.size.height * 0.5)
-                .border(Color.blue.opacity(0.5).gradient, width: 5)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.blue.opacity(0.3).gradient)
+            )
+                
             Text(answer)
                 .padding()
-                .border(Color.green.opacity(0.5).gradient, width: 5)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.green.opacity(0.3).gradient)
+                )
                 .opacity(answerRevealed ? 1 : 0)
         }
     }

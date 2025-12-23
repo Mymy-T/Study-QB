@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftData
 import SwiftUI
 
 func convertRGBAToColor(_ rgba: [Double]) -> Color {
@@ -36,3 +37,12 @@ func colorIndexFromCategory(_ category: Category) -> Int {
     }
     return categoryColorDict[category]!
 }
+
+/*var deletedCardsForReviewView: [Card] = []*/ // Assigned to upon deletion of card(s) to notify ReviewView; this will prevent manuallySelectedCards from containing deleted cards
+
+//func removeDeletedCardFromArray(array: inout [Card], deletedCard: Card) {
+//    // Call this function to remove any newly deleted cards from any arrays that may contain them
+//    array.removeAll { card in
+//        card.persistentModelID == deletedCard.persistentModelID
+//    }
+//}

@@ -11,7 +11,6 @@ import SwiftUI
 // TODO: Fix keyboard toolbar (to allow dismissal of keyboard)
 
 struct ReviewView: View {
-    
     @Query var cards: [Card]
     
     @State private var useRandomCards = true
@@ -25,9 +24,12 @@ struct ReviewView: View {
     
     @State private var showingCardNumberAlert = false
     @State private var cardNumberAlertMessage = ""
+    @State private var showingMissingNotesAlert = false
+    @State private var missingNotesAlertMessage = ""
     
     @State private var practicing = false
     @State private var cardsToReview: [Card] = []
+    
     
     var manualSelectionDescription: String {
         var description = ""
@@ -107,10 +109,27 @@ struct ReviewView: View {
                             }
                             .menuActionDismissBehavior(.disabled)
                             .onAppear {
-                                for category in Category.allCases {
-                                    categories.append(category)
+                                if categories.count == 0 {
+                                    for category in Category.allCases {
+                                        categories.append(category)
+                                    }
                                 }
+                                
+//                                if deletedCardsForReviewView.isEmpty == false {
+////                                    for deletedCard in deletedCardsForReviewView {
+////                                        if manuallySelectedCards.contains(deletedCard) {
+////                                            manuallySelectedCards.remo
+////                                        }
+////                                    }
+//                                    manuallySelectedCards.removeAll { selectedCard in
+//                                        deletedCardsForReviewView.contains(selectedCard)
+//                                    }
+//                                    deletedCardsForReviewView.removeAll()
+//                                }
                             }
+//                            .onDisappear {
+//                                manuallySelectedCards.removeAll()
+//                            }
                             
                         }
                         
@@ -131,10 +150,6 @@ struct ReviewView: View {
                                         RoundedRectangle(cornerRadius: 10)
                                             .fill(Color.green.gradient)
                                     )
-                            }.navigationDestination(isPresented: $showingManualSelectionView) {
-                                GeometryReader { geometry in
-                                    ManageCardView(geometry: geometry, editingMode: false, manuallySelectedCards: Binding.init($manuallySelectedCards))
-                                }
                             }
                             
                         }
@@ -159,8 +174,11 @@ struct ReviewView: View {
                             return
                         }
                         cardsToReview = getReviewCards()
+                        guard checkForMissingPersonalNotes() == false else {
+                            showingMissingNotesAlert = true
+                            return
+                        }
                         practicing = true
-                        
                         
                     } label: {
                         Text("Start Practice")
@@ -184,6 +202,11 @@ struct ReviewView: View {
                 .navigationDestination(isPresented: $practicing) {
                     PracticeView(reviewCards: cardsToReview, shuffle: shuffleCards)
                 }
+                .navigationDestination(isPresented: $showingManualSelectionView) {
+                    GeometryReader { geometry in
+                        ManageCardView(geometry: geometry, editingMode: false, manuallySelectedCards: Binding.init($manuallySelectedCards))
+                    }
+                }
                 .toolbar {
                     ToolbarItem(placement: .keyboard) {
                         HStack {
@@ -199,10 +222,16 @@ struct ReviewView: View {
                 } message: {
                     Text(cardNumberAlertMessage)
                 }
+                .alert("Missing Personal Notes", isPresented: $showingMissingNotesAlert) {
+                    Button("Ok") { }
+                } message: {
+                    Text(missingNotesAlertMessage)
+                }
 
         }
     }
     
+    // MARK: checkForInvalidNum
     private func checkForInvalidSelectionNumber() -> Bool { // Returns false if valid
         if cards.count == 0 {
             cardNumberAlertMessage = "Please create some cards first!"
@@ -230,7 +259,32 @@ struct ReviewView: View {
         return false // If all checks pass (none of the if statements run and return true), then return false
     }
     
+    // MARK: checkForMissingNotes
+    private func checkForMissingPersonalNotes() -> Bool { // Returns true if any card to be reviewed doesn't have any personal notes
+        var alertMessage = "Some cards don't have any personal notes. When reviewing, you review your personal notes for your cards. Please add personal notes to the following cards: "
+        var missingNotesCards: [Card] = []
+        for card in cardsToReview {
+            if card.personalNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                missingNotesCards.append(card)
+            }
+        }
+        if missingNotesCards.count != 0 {
+            for i in 0..<missingNotesCards.count {
+                alertMessage += missingNotesCards[i].answer
+                if i + 1 < missingNotesCards.count {
+                    alertMessage += ", "
+                } else {
+                    alertMessage += "."
+                }
+            }
+            missingNotesAlertMessage = alertMessage
+            return true
+        }
+        
+        return false
+    }
     
+    // MARK: getReviewCards
     private func getReviewCards() -> [Card] {
         var cardsToReview: [Card] = []
         if useRandomCards {
@@ -238,14 +292,14 @@ struct ReviewView: View {
                 var pool: [Card] = []
                 for category in categories {
                     let categoryCards = cards.filter { cardToFilter in
-                        cardToFilter.category == category
+                        cardToFilter.category.id == category.id
                     }
                     pool.append(contentsOf: categoryCards)
                 }
                 return pool
             }()
             var usedIndices: [Int] = [] // Prevent card repeats
-            while usedIndices.count < numberOfRandomCards {
+            while cardsToReview.count < numberOfRandomCards {
                 let randIndex = Int.random(in: 0..<randomCardPool.count)
                 if usedIndices.contains(randIndex) {
                     continue

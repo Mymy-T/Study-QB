@@ -7,21 +7,34 @@
 
 import SwiftUI
 
+enum Tabs: Hashable {
+    case analyze, manage, review
+}
+
 struct ContentView: View {
+    
+    @State private var selectedTab: Tabs = .analyze
+    @State private var reviewId = UUID()
+    
     var body: some View {
-        TabView {
-            Tab("Analyze", systemImage: "magnifyingglass") {
+        TabView(selection: $selectedTab) {
+            Tab("Analyze", systemImage: "magnifyingglass", value: .analyze) {
                 GeometryReader { geometry in
                     AnalyzeView(geometry: geometry)
                 }
             }
-            Tab("Manage Cards", systemImage: "note.text") {
+            Tab("Manage Cards", systemImage: "note.text", value: .manage) {
                 GeometryReader { geometry in
                     ManageCardView(geometry: geometry, editingMode: true, manuallySelectedCards: .constant(nil))
                 }
             }
-            Tab("Review Cards", systemImage: "timer") {
+            Tab("Review Cards", systemImage: "timer", value: .review) {
                 ReviewView()
+                    .id(reviewId)
+            }
+        }.onChange(of: selectedTab) { oldValue, newValue in
+            if newValue == .review {
+                reviewId = UUID()
             }
         }
     }

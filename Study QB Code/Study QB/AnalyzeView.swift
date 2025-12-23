@@ -98,8 +98,10 @@ struct AnalyzeView: View {
                         }
                         .menuActionDismissBehavior(.disabled)
                         .onAppear {
-                            for category in Category.allCases {
-                                categories.append(category)
+                            if categories.count == 0 {
+                                for category in Category.allCases {
+                                    categories.append(category)
+                                }
                             }
                         }
                     }
