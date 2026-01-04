@@ -5,12 +5,11 @@
 //  Created by Milo on 10/23/25.
 //
 
-import FirebaseAILogic
 import GroqSwift
 import SwiftData
 import SwiftUI
 // TODO: Foundation Model
-// TODO: Possibly regex for omitting extraneous answer info
+
 struct AnalyzeView: View {
     
     // Following structs for representing json data returned from api
@@ -32,12 +31,14 @@ struct AnalyzeView: View {
     
     
     @State private var answerQuery = ""
+    @State private var difficulties: Set<Int> = [2, 3, 4, 5]
     @State private var difficulty: Difficulty = .hs
     @State private var categories: [Category] = [] // [] matches all categories
     @State private var responseText = AttributedString()
     @State private var prompt = ""
     @State private var awaitingResponse = false
     @State private var responseRecieved = false
+    @State private var numQuestions = 0
     
     @State private var showEmptyQueryAlert = false
     
@@ -48,81 +49,14 @@ struct AnalyzeView: View {
     
     let groqApiKey = Bundle.main.infoDictionary!["GroqApiKey"] as! String
     
-    let model = FirebaseAI.firebaseAI(backend: .googleAI()).generativeModel(modelName: "gemini-2.5-flash-lite")
-    
     var body: some View {
         NavigationStack {
             VStack {
                 
                 HStack {
-                    
-                    VStack {
-                        
-                        Text("Categories")
-                        
-                        // MARK: Categories Menu
-                        Menu {
-                            ForEach(Category.allCases) { category in
-                                CategorySelectionButton(buttonCategory: category, categories: $categories)
-                            }
-                            Divider()
-                            Button("Select All") {
-                                categories.removeAll()
-                                for category in Category.allCases {
-                                    categories.append(category)
-                                }
-                            }
-                            Button("Remove All") {
-                                categories.removeAll()
-                            }
-                        } label: {
-                            Label("Select Categories", systemImage: "chevron.up.chevron.down")
-                                .foregroundStyle(.white)
-                                .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color.green.gradient)
-                                )
-                        }
-                        .menuActionDismissBehavior(.disabled)
-                        .onAppear {
-                            if categories.count == 0 {
-                                for category in Category.allCases {
-                                    categories.append(category)
-                                }
-                            }
-                        }
-                    }
-                    
+                    CategorySelectionMenu(categories: $categories, labelView: defaultCategoryMenuLabel())
                     Spacer()
-                    
-                    VStack {
-                        
-                        Text("Difficulty")
-                        
-                        Menu {
-                            ForEach(Difficulty.allCases) { difficulty in
-                                DifficultySelectionButton(buttonDifficulty: difficulty, difficulty: $difficulty)
-                            }
-                        } label: {
-                            ZStack {
-                                
-                                Label("Middle School", systemImage: "chevron.up.chevron.down")
-                                    .padding()
-                                    .opacity(0)
-                                
-                                Label(difficulty.rawValue, systemImage: "chevron.up.chevron.down")
-                                    .foregroundStyle(.white)
-                                    .padding()
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 10)
-                                            .fill(Color.red.gradient)
-                                    )
-                            }
-                        }
-                    }
-                    
-                    
+                    DifficultySelectionMenu(difficulties: $difficulties)
                 }.padding()
                 
                 TextField("", text: $answerQuery, prompt: Text("Enter query"))
@@ -150,6 +84,10 @@ struct AnalyzeView: View {
                     
                 }
                 
+                Text("\(numQuestions) quizbowl questions were analyzed.")
+                    .padding(.top)
+                    .opacity(responseRecieved ? 1 : 0)
+                
                 HStack {
                     
                     // MARK: Find Common Clues
@@ -163,25 +101,18 @@ struct AnalyzeView: View {
                         }
                         
                         awaitingResponse = true
-//                        Task {
-//                            do {
-//                                let data = await fetchData(query: answerQuery, difficulty: .hs, categories: categories)
-//                                prompt = processFetchedData(data)
-//                                let response = try await model.generateContent(prompt)
-//                                responseText = processResponse(response.text ?? "")
-//                                awaitingResponse = false
-//                                responseRecieved = true
-//                            } catch {
-//                                responseText = "Error with generation"
-//                                awaitingResponse = false
-//                            }
-//                        }
                         
                         Task {
                             do {
                                 let groqClient = GroqClient(apiKey: groqApiKey)
                                 let questionData = await fetchData(query: answerQuery, difficulty: .hs, categories: categories)
                                 prompt = processFetchedData(questionData)
+                                numQuestions = questionData.count
+                                guard numQuestions != 0 else {
+                                    responseText = "Your query didn't match any quizbowl questions in Qbreader. Please make sure that there aren't any typos or spelling errors in your query."
+                                    awaitingResponse = false
+                                    return
+                                }
                                 let request = ChatCompletionRequest(model: "groq/compound", messages: [Message(role: .user, content: prompt)], stream: false)
                                 let response = try await groqClient.createChatCompletion(request)
                                 
@@ -362,48 +293,4 @@ struct AnalyzeView: View {
     }
     
     
-}
-
-// MARK: CategorySelectionButton
-struct CategorySelectionButton: View {
-    let buttonCategory: Category
-    //let showingCategoryColor: Bool
-    @Binding var categories: [Category]
-    
-    var body: some View {
-        Button {
-            if categories.contains(buttonCategory) {
-                categories.removeAll { category in
-                    category == buttonCategory
-                }
-            } else {
-                categories.append(buttonCategory)
-            }
-        } label: {
-            //HStack {
-                Image(systemName: categories.contains(buttonCategory) ? "checkmark.square" : "square")
-                Text(buttonCategory.rawValue)
-        }
-    }
-}
-
-
-
-// MARK: DifficultySelectionButton
-struct DifficultySelectionButton: View {
-    let buttonDifficulty: Difficulty
-    @Binding var difficulty: Difficulty
-    
-    var body: some View {
-        Button {
-            difficulty = buttonDifficulty
-        } label: {
-            HStack {
-                Text(buttonDifficulty.rawValue)
-                if difficulty == buttonDifficulty {
-                    Image(systemName: "checkmark")
-                }
-            }
-        }
-    }
 }

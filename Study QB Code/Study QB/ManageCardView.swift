@@ -31,33 +31,7 @@ struct ManageCardView: View {
                     ToolbarItemGroup(placement: .topBarLeading) {
                         
                         // MARK: Filter Menu
-                            Menu {
-                                ForEach(Category.allCases) { category in
-                                    CategorySelectionButton(buttonCategory: category, categories: $categories)
-                                }
-                                Divider()
-                                Button("Select All") {
-                                    categories.removeAll()
-                                    for category in Category.allCases {
-                                        categories.append(category)
-                                    }
-                                }
-                                Button("Remove All") {
-                                    categories.removeAll()
-                                }
-                            } label: {
-                                Image(systemName: "line.horizontal.3.decrease")
-                                    .foregroundStyle(.blue)
-                            }
-                            .menuActionDismissBehavior(.disabled)
-                            .onAppear {
-                                if categories.count == 0 {
-                                    for category in Category.allCases {
-                                        categories.append(category)
-                                    }
-                                }
-                            }
-                        
+                        CategorySelectionMenu(categories: $categories, labelView: categoryMenuLabel())
                         
                         // MARK: Sort Picker
                         Menu {
@@ -85,6 +59,10 @@ struct ManageCardView: View {
         }
     }
     
+    private func categoryMenuLabel() -> some View {
+        return Image(systemName: "line.horizontal.3.decrease")
+            .foregroundStyle(.blue)
+    }
     
 }
 

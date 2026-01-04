@@ -31,7 +31,7 @@ enum Category: String, CaseIterable, Codable, Identifiable, Comparable {
     
 }
 
-enum  Difficulty: String, Codable, CaseIterable, Identifiable {
+enum Difficulty: String, Codable, CaseIterable, Identifiable {
     case ms = "Middle School"
     case hs = "High School"
     case col = "College"

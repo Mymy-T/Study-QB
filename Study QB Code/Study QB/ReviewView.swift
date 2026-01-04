@@ -30,6 +30,17 @@ struct ReviewView: View {
     @State private var practicing = false
     @State private var cardsToReview: [Card] = []
     
+    var numOfAvaliableRandomCards: Int {
+        var totalNum = 0
+        for category in categories {
+            let categoryCards = cards.filter { cardToFilter in
+                return cardToFilter.category == category
+            }
+            totalNum += categoryCards.count
+        }
+        return totalNum
+    }
+    
     
     var manualSelectionDescription: String {
         var description = ""
@@ -78,44 +89,22 @@ struct ReviewView: View {
                                     RoundedRectangle(cornerRadius: 10)
                                         .stroke(Color.blue.gradient)
                                 )
+                                .onChange(of: numberOfRandomCards) { _, newValue in
+                                    if newValue <= 0 {
+                                        numberOfRandomCards = 1
+                                    }
+                                    if (newValue > numOfAvaliableRandomCards) && (numOfAvaliableRandomCards != 0) {
+                                        numberOfRandomCards = numOfAvaliableRandomCards
+                                    }
+                                }
                         }
                         
                         VStack {
                             Text("Customize the card categories you will be reviewing. Please make sure that the total number of cards across the selected categories in greater than or equal to the number of cards to review.")
                             
-                            Menu {
-                                ForEach(Category.allCases) { category in
-                                    // CategorySelectionButton defined in AnalyzeView
-                                    CategorySelectionButton(buttonCategory: category, categories: $categories)
-                                }
-                                Divider()
-                                Button("Select All") {
-                                    categories.removeAll()
-                                    for category in Category.allCases {
-                                        categories.append(category)
-                                    }
-                                }
-                                Button("Remove All") {
-                                    categories.removeAll()
-                                }
-                            } label: {
-                                Label("Select Categories", systemImage: "chevron.up.chevron.down")
-                                    .foregroundStyle(.white)
-                                    .padding()
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 10)
-                                            .fill(Color.green.gradient)
-                                    )
-                            }
-                            .menuActionDismissBehavior(.disabled)
-                            .onAppear {
-                                if categories.count == 0 {
-                                    for category in Category.allCases {
-                                        categories.append(category)
-                                    }
-                                }
-                                
-                            }
+                            CategorySelectionMenu(categories: $categories, labelView: defaultCategoryMenuLabel())
+                            
+                            Text("There are a total of \(numOfAvaliableRandomCards) cards with the selected categories.")
                             
                         }
                         
@@ -150,10 +139,8 @@ struct ReviewView: View {
                     }
                 }
                 
-                Section("Begin Practice") {
-                    // TODO: Make the button bigger or center it
+                    // MARK: Begin Button
                     Button {
-                        // MARK: Begin Button
                         // Perform any necessary checks
                         guard checkForInvalidSelectionNumber() == false else {
                             showingCardNumberAlert = true
@@ -169,6 +156,7 @@ struct ReviewView: View {
                     } label: {
                         Text("Start Practice")
                             .foregroundStyle(.white)
+                            .font(.title)
                             .bold()
                             .padding()
                             .background(
@@ -176,11 +164,7 @@ struct ReviewView: View {
                                     .fill(Color.green.gradient)
                             )
                     }.buttonStyle(.borderless)
-                }
-                
-                Section("Save/Load Practice Configuration") {
-                    // TODO
-                }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 
             }
             .navigationTitle("Review")
@@ -224,14 +208,7 @@ struct ReviewView: View {
             return true
         }
         if useRandomCards {
-            var totalNum = 0
-            for category in categories {
-                let categoryCards = cards.filter { cardToFilter in
-                    return cardToFilter.category == category
-                }
-                totalNum += categoryCards.count
-            }
-            if totalNum < numberOfRandomCards {
+            if numOfAvaliableRandomCards < numberOfRandomCards {
                 cardNumberAlertMessage = "Please make sure that the number of cards is less than or equal the amount of cards you have subject to the category conditions."
                 return true
             }
