@@ -111,14 +111,6 @@ struct CardView: View {
         currentCard.answer
     }
     
-//    var cardText: String {
-//        if answerRevealed {
-//            return currentCard.answer
-//        } else {
-//            return currentCard.personalNotes
-//        }
-//    }
-    
     var body: some View {
         VStack {
             

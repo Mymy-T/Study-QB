@@ -155,14 +155,6 @@ struct CardEditorView: View {
                     .fill(color)
                     .ignoresSafeArea()
             )
-//            .onTapGesture {
-//                if editingDetails {
-//                    editingDetails = false
-//                }
-//                if editingPersonalNotes {
-//                    editingPersonalNotes = false
-//                }
-//            }
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
@@ -179,20 +171,6 @@ struct CardEditorView: View {
                     }
                     .tint(.green)
                 }
-//                ToolbarItemGroup(placement: .keyboard) {
-//                    HStack {
-//                        Spacer()
-//                        Button("Done") {
-//                            if editingDetails {
-//                                editingDetails = false
-//                            }
-//                            if editingPersonalNotes {
-//                                editingPersonalNotes = false
-//                            }
-//                        }.padding(5)
-//                            .tint(.green)
-//                    }
-//                }
                 ToolbarItemGroup(placement: .keyboard) {
                     HStack {
                         Spacer()
@@ -221,9 +199,6 @@ struct CardEditorView: View {
             color = convertRGBAToColor(existingCard.rgba)
             initialCategoryAssigned = false
         }
-//        let paragraphStyle = NSMutableParagraphStyle()
-//        paragraphStyle.lineBreakMode = .byWordWrapping
-//        details.paragraphStyle = paragraphStyle
         initialState = InitialState(dateReviewed: dateReviewed, answer: answer, details: AttributedString(details), category: category, personalNotes: personalNotes, color: color)
     }
     
@@ -289,12 +264,11 @@ struct CardEditorView: View {
                 if editingDetails {
                     editingDetails = false
                 }
-            }//.padding(5)
+            }
                 .tint(.green)
                 .glassEffect()
-        }//.padding(5)
+        }
             
-//        .frame(width: geometry.size.width * 0.9)
     }
     
 }
@@ -327,8 +301,6 @@ struct TextEditorView<ToolbarView: View>: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: UITextView, context: Context) {
-        //let selectedRange = uiView.selectedRange
-        //uiView.attributedText = text
         uiView.setNeedsLayout()
         uiView.layoutIfNeeded()
 
@@ -361,7 +333,6 @@ struct TextEditorView<ToolbarView: View>: UIViewRepresentable {
         
         func textViewDidChange(_ textView: UITextView) {
             parent.text = textView.attributedText
-            //textView.invalidateIntrinsicContentSize()
         }
         
     }

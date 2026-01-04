@@ -1,5 +1,5 @@
 {
-  "originHash" : "a1569f9895aa2be8e24832f98525d5da4eb90b5d158a82691c15b47eb72a13d7",
+  "originHash" : "72f0864f5b2a4a55c4f99f9bf2a2dcccc28a880878143d91a6a1ec4a28c99667",
   "pins" : [
     {
       "identity" : "abseil-cpp-binary",
@@ -65,6 +65,15 @@
       }
     },
     {
+      "identity" : "groq_swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/engali94/groq_swift",
+      "state" : {
+        "revision" : "8a08b68e10e221d446842d953aa1e21f3fa3763a",
+        "version" : "0.1.1"
+      }
+    },
+    {
       "identity" : "grpc-binary",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/google/grpc-binary.git",
@@ -125,6 +134,15 @@
       "state" : {
         "revision" : "c169a5744230951031770e27e475ff6eefe51f9d",
         "version" : "1.33.3"
+      }
+    },
+    {
+      "identity" : "swiftlintplugin",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/lukepistrol/SwiftLintPlugin",
+      "state" : {
+        "revision" : "9bbc46a4cf8275ceb39334f6276b6b215d67d5d5",
+        "version" : "0.62.2"
       }
     }
   ],

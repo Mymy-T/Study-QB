@@ -121,12 +121,6 @@ struct ManageCardGrid: View {
         case .titleAlphabeticalReverse:
             let sortDescriptor = SortDescriptor(\Card.answer, order: .reverse)
             _cards = Query(sort: [sortDescriptor])
-//        case .categoryAlphabeticalForward:
-//            let sortDescriptor = SortDescriptor(\Card.category.rawValue, order: .forward)
-//            _cards = Query(sort: [sortDescriptor])
-//        case .categoryAlphabeticalReverse:
-//            let sortDescriptor = SortDescriptor(\Card.category.rawValue, order: .reverse)
-//            _cards = Query(sort: [sortDescriptor])
         }
         self._manuallySelectedCards = manuallySelectedCards
     }

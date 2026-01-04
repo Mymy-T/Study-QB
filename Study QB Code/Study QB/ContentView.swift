@@ -34,6 +34,7 @@ struct ContentView: View {
             }
         }.onChange(of: selectedTab) { oldValue, newValue in
             if newValue == .review {
+                // Refresh ReviewView whenever clicking back into it; this will reset manuallySelectedCards, which may contain deleted cards
                 reviewId = UUID()
             }
         }

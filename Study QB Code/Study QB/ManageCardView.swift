@@ -86,18 +86,6 @@ struct ManageCardView: View {
     }
     
     
-    
-//    private func getDateString(date: Date) -> String {
-//        let dateString: String = {
-//            let dateFormatter = DateFormatter()
-//            dateFormatter.locale = locale
-//            dateFormatter.dateStyle = .medium
-//            dateFormatter.timeStyle = .short
-//            return dateFormatter.string(from: date)
-//        }()
-//        return dateString
-//    }
-    
 }
 
 struct SortSelectionButton: View {
@@ -124,8 +112,6 @@ enum SortParameter: String, CaseIterable, Identifiable {
     case reviewDateReverse = "Most Recently Reviewed"
     case titleAlphabeticalForward = "Alphabetical, by Title (A-Z)"
     case titleAlphabeticalReverse = "Alphabetical, by Title (Z-A)"
-//    case categoryAlphabeticalForward = "Alphabetical, by Category (A-Z)"
-//    case categoryAlphabeticalReverse = "Alphabetical, by Category (Z-A)"
     
     var id: String {
         self.rawValue

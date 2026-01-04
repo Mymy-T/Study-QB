@@ -115,21 +115,7 @@ struct ReviewView: View {
                                     }
                                 }
                                 
-//                                if deletedCardsForReviewView.isEmpty == false {
-////                                    for deletedCard in deletedCardsForReviewView {
-////                                        if manuallySelectedCards.contains(deletedCard) {
-////                                            manuallySelectedCards.remo
-////                                        }
-////                                    }
-//                                    manuallySelectedCards.removeAll { selectedCard in
-//                                        deletedCardsForReviewView.contains(selectedCard)
-//                                    }
-//                                    deletedCardsForReviewView.removeAll()
-//                                }
                             }
-//                            .onDisappear {
-//                                manuallySelectedCards.removeAll()
-//                            }
                             
                         }
                         

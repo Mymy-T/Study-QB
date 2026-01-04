@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		CA221EC22F08CA9900DEB2B3 /* GroqSwift in Frameworks */ = {isa = PBXBuildFile; productRef = CA221EC12F08CA9900DEB2B3 /* GroqSwift */; };
 		CA57708A2EB828D30051EFCB /* FirebaseAILogic in Frameworks */ = {isa = PBXBuildFile; productRef = CA5770892EB828D30051EFCB /* FirebaseAILogic */; };
 		CA57708C2EB828D30051EFCB /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = CA57708B2EB828D30051EFCB /* FirebaseAnalytics */; };
 /* End PBXBuildFile section */
@@ -29,6 +30,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				CA57708C2EB828D30051EFCB /* FirebaseAnalytics in Frameworks */,
+				CA221EC22F08CA9900DEB2B3 /* GroqSwift in Frameworks */,
 				CA57708A2EB828D30051EFCB /* FirebaseAILogic in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -74,6 +76,7 @@
 			packageProductDependencies = (
 				CA5770892EB828D30051EFCB /* FirebaseAILogic */,
 				CA57708B2EB828D30051EFCB /* FirebaseAnalytics */,
+				CA221EC12F08CA9900DEB2B3 /* GroqSwift */,
 			);
 			productName = "Study QB";
 			productReference = CA842D172EAAE2EC00415BB7 /* Study QB.app */;
@@ -105,6 +108,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				CA5770882EB828D30051EFCB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				CA221EC02F08CA9800DEB2B3 /* XCRemoteSwiftPackageReference "groq_swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = CA842D182EAAE2EC00415BB7 /* Products */;
@@ -260,6 +264,8 @@
 		};
 		CA842D232EAAE2EE00415BB7 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = CA842D192EAAE2EC00415BB7 /* Study QB */;
+			baseConfigurationReferenceRelativePath = Secrets.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -293,6 +299,8 @@
 		};
 		CA842D242EAAE2EE00415BB7 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = CA842D192EAAE2EC00415BB7 /* Study QB */;
+			baseConfigurationReferenceRelativePath = Secrets.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -348,6 +356,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		CA221EC02F08CA9800DEB2B3 /* XCRemoteSwiftPackageReference "groq_swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/engali94/groq_swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.1.1;
+			};
+		};
 		CA5770882EB828D30051EFCB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
@@ -359,6 +375,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		CA221EC12F08CA9900DEB2B3 /* GroqSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CA221EC02F08CA9800DEB2B3 /* XCRemoteSwiftPackageReference "groq_swift" */;
+			productName = GroqSwift;
+		};
 		CA5770892EB828D30051EFCB /* FirebaseAILogic */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = CA5770882EB828D30051EFCB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;

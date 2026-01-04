@@ -6,6 +6,7 @@
 //
 
 import FirebaseAILogic
+import GroqSwift
 import SwiftData
 import SwiftUI
 // TODO: Foundation Model
@@ -39,26 +40,13 @@ struct AnalyzeView: View {
     @State private var responseRecieved = false
     
     @State private var showEmptyQueryAlert = false
-//    @State private var showCardSavedAlert = false
-//    @State private var showCategoryPromptAlert = false
-//    @State private var showingSaveCardSheet = false
-//    @State private var selectedCategory: Category = .lit
+    
+    @State private var analyzeHelpPresented = false
     
     let geometry: GeometryProxy
     
     
-//    var difficultyBounds: (Int, Int) {
-//        // (Low, High)
-//        switch difficulty {
-//        case .ms:
-//            return (1, 1)
-//        case .hs:
-//            return (2, 5)
-//        case .col:
-//            return (6, 9)
-//        }
-//    }
-    
+    let groqApiKey = Bundle.main.infoDictionary!["GroqApiKey"] as! String
     
     let model = FirebaseAI.firebaseAI(backend: .googleAI()).generativeModel(modelName: "gemini-2.5-flash-lite")
     
@@ -175,19 +163,58 @@ struct AnalyzeView: View {
                         }
                         
                         awaitingResponse = true
+//                        Task {
+//                            do {
+//                                let data = await fetchData(query: answerQuery, difficulty: .hs, categories: categories)
+//                                prompt = processFetchedData(data)
+//                                let response = try await model.generateContent(prompt)
+//                                responseText = processResponse(response.text ?? "")
+//                                awaitingResponse = false
+//                                responseRecieved = true
+//                            } catch {
+//                                responseText = "Error with generation"
+//                                awaitingResponse = false
+//                            }
+//                        }
+                        
                         Task {
                             do {
-                                let data = await fetchData(query: answerQuery, difficulty: .hs, categories: [])
-                                prompt = processFetchedData(data)
-                                let response = try await model.generateContent(prompt)
-                                responseText = processResponse(response.text ?? "")
+                                let groqClient = GroqClient(apiKey: groqApiKey)
+                                let questionData = await fetchData(query: answerQuery, difficulty: .hs, categories: categories)
+                                prompt = processFetchedData(questionData)
+                                let request = ChatCompletionRequest(model: "groq/compound", messages: [Message(role: .user, content: prompt)], stream: false)
+                                let response = try await groqClient.createChatCompletion(request)
+                                
+                                responseText = processResponse(response.choices[0].message.content)
                                 awaitingResponse = false
                                 responseRecieved = true
-                            } catch {
-                                responseText = "Error with generation"
+                                
+                            } catch let error as GroqError {
+                                responseText = "Sorry, something went wrong."
                                 awaitingResponse = false
+                                switch error {
+                                    case .invalidRequest(let message):
+                                        print("Invalid request: \(message)")
+                                    case .authenticationFailed(let message):
+                                        print("Auth error: \(message)")
+                                        print("API Key: \(groqApiKey)")
+                                    case .modelNotFound(let message):
+                                    print("Model not found: \(message)")
+                                    case .invalidResponse(let message):
+                                        print("Invalid response: \(message)")
+                                    case .invalidURL:
+                                        print("Invalid URL")
+                                default:
+                                    print("Some other error: \(error.localizedDescription)")
+                                    
+                                    }
+                            } catch {
+                                responseText = "Sorry, something went wrong."
+                                awaitingResponse = false
+                                print("Unexpected error: \(error)")
                             }
                         }
+                        
                     } label: {
                         Text("Find Common Clues")
                             .foregroundStyle(.white)
@@ -221,43 +248,6 @@ struct AnalyzeView: View {
                             .opacity(responseRecieved ? 1.0 : 0.0)
                             .disabled(!responseRecieved)
                     }
-
-                    
-//                    Button {
-//                        //showCategoryPromptAlert = true
-//                        showingSaveCardSheet = true
-//                        responseText.font = UIFont.systemFont(ofSize: 17)
-//                    } label: {
-//                        Text("Save")
-//                            .foregroundStyle(.white)
-//                            .padding()
-//                            .background(
-//                                RoundedRectangle(cornerRadius: 10)
-//                                    .fill(Color.green.gradient)
-//                            )
-//                            .opacity(responseRecieved ? 1.0 : 0.0)
-//                    }
-//                    .fullScreenCover(isPresented: $showingSaveCardSheet, onDismiss: {
-//                        showCardSavedAlert = true
-//                    }, content: {
-//                        CardEditorView(geometry: geometry, answer: answerQuery, details: responseText)
-//                    })
-//                    .alert("Select Category", isPresented: $showCategoryPromptAlert) {
-//                        Picker("", selection: $selectedCategory) {
-//                            ForEach(Category.allCases) { category in
-//                                Text(category.rawValue)
-//                                    .tag(category)
-//                            }
-//                        }
-//                        Button("Save Card") {
-//                            responseText.font = UIFont.systemFont(ofSize: 17)
-//                            let newCard = Card(dateReviewed: Date.now, answer: answerQuery, details: responseText, category: selectedCategory, personalNotes: "", rgba: convertColorToRGBA(.red.opacity(0.4)))
-//                            modelContext.insert(newCard)
-//                        }
-//                    }
-//                    .alert("Card Saved", isPresented: $showCardSavedAlert) {
-//                        Button("Ok") { }
-//                    }
                     
                 }.padding()
                 
@@ -267,12 +257,25 @@ struct AnalyzeView: View {
                 
             }.navigationTitle("Analyze")
                 .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            analyzeHelpPresented = true
+                        } label: {
+                            Image(systemName: "questionmark.circle")
+                        }
+                    }
+                }
+                .sheet(isPresented: $analyzeHelpPresented) {
+                    HelpView()
+                }
             
         }
         
         
     }
     
+    // MARK: fetchData
     private func fetchData(query: String, difficulty: Difficulty, categories: [Category]) async -> [Question] {
         
         let formattedQuery = query.replacingOccurrences(of: " ", with: "%20")
@@ -291,7 +294,13 @@ struct AnalyzeView: View {
         
         let categories: String = {
             if categories.count == 0 {
-                return ""
+                // Get all categories
+                var string = ""
+                for category in Category.allCases {
+                    string += category.rawValue.replacingOccurrences(of: " ", with: "%20")
+                    string += ","
+                }
+                return string
             } else {
                 var string = ""
                 for i in categories.indices {
@@ -328,9 +337,10 @@ struct AnalyzeView: View {
         
     }
     
+    // MARK: processFetchedData
     private func processFetchedData(_ data: [Question]) -> String {
         // Converts the data into a string to feed into llm
-        var processedDataString = "Given these quizbowl questions, can you explain the most important clues between them that are worth remembering? The clues should be specific to the answer and should not be vague. Clues involving significant names, objects, or processes should be prioritized. Do not list clues that appear only two times or less in your response. Omit clues that appear less than three times in your response. The answer is \(answerQuery). Within the prompt, the questions will be delineated by the words END QUESTION. Order the clues so that those that appear the most frequently are listed first. Use new lines (\n) to separate clues. Provide a description of each clue you found, in enough depth for someone new to the topic to understand. Do not explain why you chose each clue in the descriptions. Bold each clue. Do not bold the descriptions. Do not generate any extraneous information about the questions. The questions are as follows: "
+        var processedDataString = "Given these quizbowl questions, can you explain the most important clues between them that are worth remembering? The clues should be specific to the answer and should not be vague. Clues involving significant names, objects, or processes should be prioritized. Do not list clues that appear only two times or less in your response. Omit clues that appear less than three times in your response. The answer is \(answerQuery). Within the prompt, the questions will be delineated by the words END QUESTION. Order the clues so that those that appear most frequently are listed first. Use new lines (\n) to separate clues. Provide a description of each clue you found, in enough depth for someone new to the topic to understand. Do not explain why you chose each clue in the descriptions. Bold each clue. Do not bold the descriptions. Do not generate any extraneous information about the questions. The questions are as follows: "
         for i in data.indices {
             processedDataString += "This is question number \(i + 1). The answer is \(data[i].answer_sanitized). The question is as follows: \(data[i].question_sanitized) END QUESTION. "
         }
@@ -339,6 +349,7 @@ struct AnalyzeView: View {
         
     }
     
+    // MARK: processResponse
     private func processResponse(_ response: String) -> AttributedString {
         do {
             let processedResult = try AttributedString(markdown: response, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))
@@ -372,15 +383,6 @@ struct CategorySelectionButton: View {
             //HStack {
                 Image(systemName: categories.contains(buttonCategory) ? "checkmark.square" : "square")
                 Text(buttonCategory.rawValue)
-//                Spacer()
-//                //if showingCategoryColor {
-//                    Circle()
-//                    .fill(colors[colorIndexFromCategory(buttonCategory)])
-//                    .frame(width: 10, height: 10)
-                        
-                //}
-                
-            //}
         }
     }
 }
