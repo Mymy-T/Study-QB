@@ -48,6 +48,8 @@ struct AnalyzeView: View {
     
     
     let groqApiKey = Bundle.main.infoDictionary!["GroqApiKey"] as! String
+    let models = ["allam-2-7b", "llama-3.1-8b-instant", "llama-3.3-70b-versatile", "meta-llama/llama-4-maverick-17b-128e-instruct", "meta-llama/llama-4-scout-17b-16e-instruct", "meta-llama/llama-guard-4-12b", "meta-llama/llama-prompt-guard-2-22m", "meta-llama/llama-prompt-guard-2-86m", "moonshotai/kimi-k2-instruct", "moonshotai/kimi-k2-instruct-0905", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "openai/gpt-oss-safeguard-20b", "qwen/qwen3-32b"]
+    @State private var modelIndex = 0
     
     var body: some View {
         NavigationStack {
@@ -113,7 +115,7 @@ struct AnalyzeView: View {
                                     awaitingResponse = false
                                     return
                                 }
-                                let request = ChatCompletionRequest(model: "groq/compound", messages: [Message(role: .user, content: prompt)], stream: false)
+                                let request = ChatCompletionRequest(model: "openai/gpt-oss-20b", messages: [Message(role: .user, content: prompt)], stream: false)
                                 let response = try await groqClient.createChatCompletion(request)
                                 
                                 responseText = processResponse(response.choices[0].message.content)
@@ -121,24 +123,29 @@ struct AnalyzeView: View {
                                 responseRecieved = true
                                 
                             } catch let error as GroqError {
-                                responseText = "Sorry, something went wrong."
                                 awaitingResponse = false
                                 switch error {
-                                    case .invalidRequest(let message):
-                                        print("Invalid request: \(message)")
-                                    case .authenticationFailed(let message):
-                                        print("Auth error: \(message)")
-                                        print("API Key: \(groqApiKey)")
-                                    case .modelNotFound(let message):
-                                    print("Model not found: \(message)")
-                                    case .invalidResponse(let message):
-                                        print("Invalid response: \(message)")
-                                    case .invalidURL:
-                                        print("Invalid URL")
+                                case .maxTokensExceeded(let message):
+                                    responseText = AttributedString("Max tokens exceeded: \(message)")
+                                case .rateLimitExceeded(let message):
+                                    responseText = AttributedString("Rate limit exceeded; attempting to switch to new model: \(message)")
+//                                    if modelIndex < models.count - 1 {
+//                                        modelIndex += 1
+//                                    } else {
+//                                        modelIndex = 0
+//                                    }
+                                case .invalidRequest(let message):
+                                    responseText = AttributedString("Invalid request: \(message)")
+                                case .authenticationFailed(let message):
+                                    responseText = AttributedString("Authentication failed: \(message)")
+                                case .modelNotFound(let message):
+                                    responseText = AttributedString("Model not found: \(message)")
+                                case .invalidResponse(let message):
+                                    responseText = AttributedString("Invalid response: \(message)")
                                 default:
                                     print("Some other error: \(error.localizedDescription)")
-                                    
-                                    }
+                                    responseText = "Sorry, something went wrong"
+                                }
                             } catch {
                                 responseText = "Sorry, something went wrong."
                                 awaitingResponse = false
@@ -271,7 +278,7 @@ struct AnalyzeView: View {
     // MARK: processFetchedData
     private func processFetchedData(_ data: [Question]) -> String {
         // Converts the data into a string to feed into llm
-        var processedDataString = "Given these quizbowl questions, can you explain the most important clues between them that are worth remembering? The clues should be specific to the answer and should not be vague. Clues involving significant names, objects, or processes should be prioritized. Do not list clues that appear only two times or less in your response. Omit clues that appear less than three times in your response. The answer is \(answerQuery). Within the prompt, the questions will be delineated by the words END QUESTION. Order the clues so that those that appear most frequently are listed first. Use new lines (\n) to separate clues. Provide a description of each clue you found, in enough depth for someone new to the topic to understand. Do not explain why you chose each clue in the descriptions. Bold each clue. Do not bold the descriptions. Do not generate any extraneous information about the questions. The questions are as follows: "
+        var processedDataString = "Given these quizbowl questions, explain the most important clues worth remembering. The clues should be specific. Clues that are frequent or involve significant names, objects, or processes should be prioritized. Try to list between 10 and 15 clues. The answer is \(answerQuery). Within the prompt, the questions will be delineated by the words END QUESTION. Order the clues so more common ones listed first. Use new lines (\n) to separate clues. Provide a description of each clue you found, in enough depth for someone new to the topic to understand. Do not explain why you chose the clues. Bold each clue. Do not bold the descriptions. Do not generate any extraneous information. The questions are as follows: "
         for i in data.indices {
             processedDataString += "This is question number \(i + 1). The answer is \(data[i].answer_sanitized). The question is as follows: \(data[i].question_sanitized) END QUESTION. "
         }

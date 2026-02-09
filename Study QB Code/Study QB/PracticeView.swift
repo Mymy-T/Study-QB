@@ -12,33 +12,76 @@ struct PracticeView: View {
     
     let reviewCards: [Card]
     let shuffle: Bool
+    let sequentialClues: Bool
     @State var currentCard = Card(dateReviewed: Date.now, answer: "Placeholder", details: "Placeholder", category: .lit, personalNotes: "Placeholder", rgba: convertColorToRGBA(Color.black))
-    @State private var questionText = ""
-    @State private var answerText = ""
     @State private var answerRevealed = false
+    @State private var clues: [String] = [] // Only used if sequentialClues is true
+    @State private var clueIndex = 0 // Only used if sequentialClues is true
+    @State private var maxClueIndex = 0 // Only used if sequentialClues is true
+    @State private var question = ""
+    @State private var answer = ""
+    
     
     
     var body: some View {
         GeometryReader { geometry in
             VStack(alignment: .center) {
-                CardView(geometry: geometry, answerRevealed: $answerRevealed, currentCard: $currentCard)
-                HStack {
-                    Button {
-                        answerRevealed.toggle()
-                    } label: {
-                        Text(answerRevealed ? "Hide Answer" : "Show Answer")
-                            .foregroundStyle(.white)
-                            .bold()
-                            .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.blue.gradient)
-                            )
+                CardView(geometry: geometry, sequentialClues: sequentialClues, answerRevealed: $answerRevealed, question: $question, answer: $answer)
+                
+                if sequentialClues {
+                    Text("\(clueIndex + 1) out of \(maxClueIndex + 1) clues revealed.")
+                }
+                
+                VStack {
+                    HStack {
+                        Button {
+                            answerRevealed.toggle()
+                        } label: {
+                            Text(answerRevealed ? "Hide Answer" : "Show Answer")
+                                .foregroundStyle(.white)
+                                .bold()
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.blue.gradient)
+                                )
+                        }
+                        
+                        if sequentialClues {
+                            // MARK: Next Clue Button
+                            Button {
+                                clueIndex += 1
+                                question += ("\n" + clues[clueIndex])
+                            } label: {
+                                Text("Next Clue")
+                                    .foregroundStyle(.white)
+                                    .bold()
+                                    .padding()
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(Color.green.gradient)
+                                    )
+                            }.disabled(clueIndex == maxClueIndex)
+                                .opacity(clueIndex == maxClueIndex ? 0.5 : 1)
+                        }
+                        
+                        
                     }
                     
+                    // MARK: Next Card Button
                     Button {
                         answerRevealed = false
                         currentCard = getNextCard(current: currentCard, shuffle: shuffle)
+                        if sequentialClues {
+                            clues = currentCard.personalNotes.split(whereSeparator: \.isNewline).map{ String($0) }
+                            clues.reverse()
+                            maxClueIndex = clues.count - 1
+                            clueIndex = 0
+                            question = clues[clueIndex]
+                        } else {
+                            question = currentCard.personalNotes
+                        }
+                        answer = currentCard.answer
                     } label: {
                         Text("Next Card")
                             .foregroundStyle(.white)
@@ -51,8 +94,23 @@ struct PracticeView: View {
                     }
                     
                 }
+                
+                
+                
+                
             }.onAppear {
                 currentCard = reviewCards[0]
+                if sequentialClues {
+                    clues = currentCard.personalNotes.split(whereSeparator: \.isNewline).map{ String($0) }
+                    clues.reverse()
+                    maxClueIndex = clues.count - 1
+                    clueIndex = 0
+                    question = clues[clueIndex]
+                    answer = currentCard.answer
+                } else {
+                    question = currentCard.personalNotes
+                    answer = currentCard.answer
+                }
             }
             .frame(width: geometry.size.width * 0.9, height: geometry.size.height * 0.9)
             .position(x: geometry.size.width * 0.5, y: geometry.size.height * 0.5)
@@ -94,22 +152,26 @@ struct PracticeView: View {
     }
     
     
+    
 }
 
 // MARK: CardView
 struct CardView: View {
-    
     let geometry: GeometryProxy
+    let sequentialClues: Bool
     @Binding var answerRevealed: Bool
-    @Binding var currentCard: Card
+//    @Binding var currentCard: Card
+//    @Binding var currentClueNumber: Int
+    @Binding var question: String
+    @Binding var answer: String
     
-    var question: String {
-        currentCard.personalNotes
-    }
-    
-    var answer: String {
-        currentCard.answer
-    }
+//    var question: String {
+//        currentCard.personalNotes
+//    }
+//    
+//    var answer: String {
+//        currentCard.answer
+//    }
     
     var body: some View {
         VStack {

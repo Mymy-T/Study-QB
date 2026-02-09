@@ -27,7 +27,7 @@ struct ManageCardGrid: View {
     
     var dateStrings: [String] {
         var strings: [String] = []
-        for card in cards {
+        for card in searchResults {
             let dateFormatter = DateFormatter()
             dateFormatter.locale = locale
             dateFormatter.dateStyle = .medium
@@ -149,5 +149,12 @@ struct ManageCardGrid: View {
         )
     }
     
+    private func dateStringFromCard(card: Card) -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = locale
+        dateFormatter.dateStyle = .medium
+        dateFormatter.timeStyle = .none
+        return dateFormatter.string(from: card.dateReviewed)
+    }
     
 }

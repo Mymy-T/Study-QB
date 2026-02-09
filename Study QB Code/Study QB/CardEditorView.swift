@@ -112,12 +112,17 @@ struct CardEditorView: View {
                 colorPickerView()
             }
             Section("Personal Notes") {
-                ZStack {
-                    TextEditor(text: $personalNotes)
-                        .scrollDisabled(true)
-                        .focused($editingPersonalNotes)
-                    Text("Add any personal notes here.")
-                        .opacity(personalNotes.trimmingCharacters(in: .whitespacesAndNewlines) == "" ? 0.3 : 0)
+                VStack {
+                    Text("Here, you can list the facts that you want to review. List easier clues closer to the top and places clues on separate lines to make use of the clue reveal feature when reviewing.")
+                        .font(.caption)
+                    Divider()
+                    ZStack {
+                        TextEditor(text: $personalNotes)
+                            .scrollDisabled(true)
+                            .focused($editingPersonalNotes)
+                        Text("Add any personal notes here.")
+                            .opacity(personalNotes.trimmingCharacters(in: .whitespacesAndNewlines) == "" ? 0.3 : 0)
+                    }
                 }
             }
             

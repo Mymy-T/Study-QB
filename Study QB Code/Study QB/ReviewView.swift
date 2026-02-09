@@ -21,6 +21,7 @@ struct ReviewView: View {
     @State private var showingManualSelectionView = false
     
     @State private var shuffleCards = false
+    @State private var sequentialClues = false
     
     @State private var showingCardNumberAlert = false
     @State private var cardNumberAlertMessage = ""
@@ -137,6 +138,9 @@ struct ReviewView: View {
                     Toggle(isOn: $shuffleCards) {
                         Text("Shuffle cards when reviewing?")
                     }
+                    Toggle(isOn: $sequentialClues) {
+                        Text("Slowly reveal clues?")
+                    }
                 }
                 
                     // MARK: Begin Button
@@ -170,7 +174,7 @@ struct ReviewView: View {
             .navigationTitle("Review")
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(isPresented: $practicing) {
-                    PracticeView(reviewCards: cardsToReview, shuffle: shuffleCards)
+                    PracticeView(reviewCards: cardsToReview, shuffle: shuffleCards, sequentialClues: sequentialClues)
                 }
                 .navigationDestination(isPresented: $showingManualSelectionView) {
                     GeometryReader { geometry in
