@@ -269,10 +269,10 @@ struct CardEditorView: View {
                 if editingDetails {
                     editingDetails = false
                 }
-            }
-                .tint(.green)
-                .glassEffect()
-        }
+            }.foregroundStyle(.black)
+                .padding()
+        }.glassEffect()
+            .frame(width: 0.9*geometry.size.width)
             
     }
     

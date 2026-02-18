@@ -29,7 +29,7 @@ struct ContentView: View {
                 }
             }
             Tab("Review Cards", systemImage: "timer", value: .review) {
-                ReviewView()
+                PracticeSetupView()
                     .id(reviewId)
             }
         }.onChange(of: selectedTab) { oldValue, newValue in

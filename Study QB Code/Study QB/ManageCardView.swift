@@ -23,7 +23,7 @@ struct ManageCardView: View {
         NavigationStack {
             
             ManageCardGrid(geometry: geometry, searchText: searchText, categories: categories, editingMode: editingMode, sortParameter: sortParameter, manuallySelectedCards: $manuallySelectedCards)
-                .searchable(text: $searchText, prompt: "Search for a card")
+                .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search for a card")
                 .navigationTitle(editingMode ? "Your Cards" : "\(manuallySelectedCards!.count) selected")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {

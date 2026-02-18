@@ -10,7 +10,7 @@ import SwiftUI
 
 // TODO: Fix keyboard toolbar (to allow dismissal of keyboard)
 
-struct ReviewView: View {
+struct PracticeSetupView: View {
     @Query var cards: [Card]
     
     @State private var useRandomCards = true
@@ -181,14 +181,15 @@ struct ReviewView: View {
                         ManageCardView(geometry: geometry, editingMode: false, manuallySelectedCards: Binding.init($manuallySelectedCards))
                     }
                 }
-                .toolbar {
-                    ToolbarItem(placement: .keyboard) {
+                .safeAreaInset(edge: .bottom) {
+                    if enteringCardNumber {
                         HStack {
                             Spacer()
-                            Button("Done") {
-                                enteringCardNumber = false
-                            }
+                            Button("Done") { enteringCardNumber = false }
+                                .padding()
                         }
+                        .background(.bar)
+                        .glassEffect()
                     }
                 }
                 .alert("Not Enough Cards", isPresented: $showingCardNumberAlert) {

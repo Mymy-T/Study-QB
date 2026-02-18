@@ -11,6 +11,7 @@ import SwiftUI
 struct PracticeView: View {
     
     let reviewCards: [Card]
+    // Various modes
     let shuffle: Bool
     let sequentialClues: Bool
     @State var currentCard = Card(dateReviewed: Date.now, answer: "Placeholder", details: "Placeholder", category: .lit, personalNotes: "Placeholder", rgba: convertColorToRGBA(Color.black))

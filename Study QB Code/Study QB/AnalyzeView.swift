@@ -31,6 +31,7 @@ struct AnalyzeView: View {
     
     
     @State private var answerQuery = ""
+    @FocusState var queryKeyboard: Bool
     @State private var difficulties: Set<Int> = [2, 3, 4, 5]
     @State private var difficulty: Difficulty = .hs
     @State private var categories: [Category] = [] // [] matches all categories
@@ -48,8 +49,11 @@ struct AnalyzeView: View {
     
     
     let groqApiKey = Bundle.main.infoDictionary!["GroqApiKey"] as! String
-    let models = ["allam-2-7b", "llama-3.1-8b-instant", "llama-3.3-70b-versatile", "meta-llama/llama-4-maverick-17b-128e-instruct", "meta-llama/llama-4-scout-17b-16e-instruct", "meta-llama/llama-guard-4-12b", "meta-llama/llama-prompt-guard-2-22m", "meta-llama/llama-prompt-guard-2-86m", "moonshotai/kimi-k2-instruct", "moonshotai/kimi-k2-instruct-0905", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "openai/gpt-oss-safeguard-20b", "qwen/qwen3-32b"]
+    let models = ["llama-3.3-70b-versatile", "moonshotai/kimi-k2-instruct-0905", "moonshotai/kimi-k2-instruct", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "openai/gpt-oss-safeguard-20b", "meta-llama/llama-4-maverick-17b-128e-instruct", "meta-llama/llama-4-scout-17b-16e-instruct"]
     @State private var modelIndex = 0
+    var currentModelName: String {
+        return models[modelIndex]
+    }
     
     var body: some View {
         NavigationStack {
@@ -68,6 +72,19 @@ struct AnalyzeView: View {
                             .fill(.gray.opacity(0.2))
                     )
                     .padding(.horizontal)
+                    .onSubmit {
+                        
+                        guard answerQuery != "" else {
+                            showEmptyQueryAlert = true
+                            return
+                        }
+                        
+                        Task {
+                            await getLLMResponse()
+                        }
+                        
+                    }
+                    .focused($queryKeyboard)
                 
                 
                 ZStack {
@@ -86,71 +103,42 @@ struct AnalyzeView: View {
                     
                 }
                 
-                Text("\(numQuestions) quizbowl questions were analyzed.")
+                Text("\(numQuestions) quizbowl questions were analyzed using the \(currentModelName) model.")
+                    .font(.caption)
                     .padding(.top)
                     .opacity(responseRecieved ? 1 : 0)
                 
+                
                 HStack {
+                    
+                    // MARK: Save Card
+                    
+                    NavigationLink {
+                        CardEditorView(geometry: geometry, answer: answerQuery, details: responseText)
+                    } label: {
+                        Text("Save")
+                            .foregroundStyle(.white)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.green.gradient)
+                            )
+                            .opacity(responseRecieved ? 1.0 : 0.0)
+                            .disabled(!responseRecieved)
+                    }
+                    
+                    Spacer()
                     
                     // MARK: Find Common Clues
                     Button {
-                        
-                        responseRecieved = false
                         
                         guard answerQuery != "" else {
                             showEmptyQueryAlert = true
                             return
                         }
                         
-                        awaitingResponse = true
-                        
                         Task {
-                            do {
-                                let groqClient = GroqClient(apiKey: groqApiKey)
-                                let questionData = await fetchData(query: answerQuery, difficulty: .hs, categories: categories)
-                                prompt = processFetchedData(questionData)
-                                numQuestions = questionData.count
-                                guard numQuestions != 0 else {
-                                    responseText = "Your query didn't match any quizbowl questions in Qbreader. Please make sure that there aren't any typos or spelling errors in your query."
-                                    awaitingResponse = false
-                                    return
-                                }
-                                let request = ChatCompletionRequest(model: "openai/gpt-oss-20b", messages: [Message(role: .user, content: prompt)], stream: false)
-                                let response = try await groqClient.createChatCompletion(request)
-                                
-                                responseText = processResponse(response.choices[0].message.content)
-                                awaitingResponse = false
-                                responseRecieved = true
-                                
-                            } catch let error as GroqError {
-                                awaitingResponse = false
-                                switch error {
-                                case .maxTokensExceeded(let message):
-                                    responseText = AttributedString("Max tokens exceeded: \(message)")
-                                case .rateLimitExceeded(let message):
-                                    responseText = AttributedString("Rate limit exceeded; attempting to switch to new model: \(message)")
-//                                    if modelIndex < models.count - 1 {
-//                                        modelIndex += 1
-//                                    } else {
-//                                        modelIndex = 0
-//                                    }
-                                case .invalidRequest(let message):
-                                    responseText = AttributedString("Invalid request: \(message)")
-                                case .authenticationFailed(let message):
-                                    responseText = AttributedString("Authentication failed: \(message)")
-                                case .modelNotFound(let message):
-                                    responseText = AttributedString("Model not found: \(message)")
-                                case .invalidResponse(let message):
-                                    responseText = AttributedString("Invalid response: \(message)")
-                                default:
-                                    print("Some other error: \(error.localizedDescription)")
-                                    responseText = "Sorry, something went wrong"
-                                }
-                            } catch {
-                                responseText = "Sorry, something went wrong."
-                                awaitingResponse = false
-                                print("Unexpected error: \(error)")
-                            }
+                            await getLLMResponse()
                         }
                         
                     } label: {
@@ -169,23 +157,6 @@ struct AnalyzeView: View {
                         Text("Please enter a query.")
                     }
                     
-                    Spacer()
-                    
-                    // MARK: Save Card
-                    
-                    NavigationLink {
-                        CardEditorView(geometry: geometry, answer: answerQuery, details: responseText)
-                    } label: {
-                        Text("Save")
-                            .foregroundStyle(.white)
-                            .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.green.gradient)
-                            )
-                            .opacity(responseRecieved ? 1.0 : 0.0)
-                            .disabled(!responseRecieved)
-                    }
                     
                 }.padding()
                 
@@ -285,6 +256,61 @@ struct AnalyzeView: View {
         
         return processedDataString
         
+    }
+    
+    // MARK: getLLMResponse
+    private func getLLMResponse() async {
+        responseRecieved = false
+        awaitingResponse = true
+        queryKeyboard = false
+        Task {
+            do {
+                let groqClient = GroqClient(apiKey: groqApiKey)
+                let questionData = await fetchData(query: answerQuery, difficulty: .hs, categories: categories)
+                prompt = processFetchedData(questionData)
+                numQuestions = questionData.count
+                guard numQuestions != 0 else {
+                    responseText = "Your query didn't match any quizbowl questions in Qbreader. Please make sure that there aren't any typos or spelling errors in your query."
+                    awaitingResponse = false
+                    return
+                }
+                let request = ChatCompletionRequest(model: models[modelIndex], messages: [Message(role: .user, content: prompt)], stream: false)
+                let response = try await groqClient.createChatCompletion(request)
+                
+                responseText = processResponse(response.choices[0].message.content)
+                awaitingResponse = false
+                responseRecieved = true
+                
+            } catch let error as GroqError {
+                awaitingResponse = false
+                switch error {
+                case .maxTokensExceeded(let message):
+                    responseText = AttributedString("Max tokens exceeded: \(message)")
+                case .rateLimitExceeded(let message):
+                    responseText = AttributedString("Rate limit exceeded, attempting to switch to another model: \n \(message)")
+                    if modelIndex < models.count - 1 {
+                        modelIndex += 1
+                    } else {
+                        modelIndex = 0
+                    }
+                case .invalidRequest(let message):
+                    responseText = AttributedString("Invalid request: \(message)")
+                case .authenticationFailed(let message):
+                    responseText = AttributedString("Authentication failed: \(message)")
+                case .modelNotFound(let message):
+                    responseText = AttributedString("Model not found: \(message)")
+                case .invalidResponse(let message):
+                    responseText = AttributedString("Invalid response: \(message)")
+                default:
+                    print("Some other error: \(error.localizedDescription)")
+                    responseText = "Sorry, something went wrong"
+                }
+            } catch {
+                responseText = "Sorry, something went wrong."
+                awaitingResponse = false
+                print("Unexpected error: \(error)")
+            }
+        }
     }
     
     // MARK: processResponse
