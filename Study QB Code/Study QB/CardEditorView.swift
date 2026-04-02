@@ -271,7 +271,7 @@ struct CardEditorView: View {
                 }
             }.foregroundStyle(.black)
                 .padding()
-        }.glassEffect()
+        }.glassEffectIfAvaliable()
             .frame(width: 0.9*geometry.size.width)
             
     }
@@ -342,4 +342,21 @@ struct TextEditorView<ToolbarView: View>: UIViewRepresentable {
         
     }
     
+}
+
+struct GlassEffectModifier: ViewModifier {
+    @ViewBuilder
+       func body(content: Content) -> some View {
+           if #available(iOS 26.0, *) {
+               content.glassEffect()
+           } else {
+               content
+           }
+       }
+}
+
+extension View {
+    func glassEffectIfAvaliable() -> some View {
+        self.modifier(GlassEffectModifier())
+    }
 }

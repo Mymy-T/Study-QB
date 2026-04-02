@@ -10,11 +10,11 @@ import SwiftUI
 
 struct PracticeView: View {
     
-    let reviewCards: [Card]
+    let reviewCards: [any CardLike]
     // Various modes
-    let shuffle: Bool
     let sequentialClues: Bool
-    @State var currentCard = Card(dateReviewed: Date.now, answer: "Placeholder", details: "Placeholder", category: .lit, personalNotes: "Placeholder", rgba: convertColorToRGBA(Color.black))
+    let singleClue: Bool
+    @State var currentCard: any CardLike = Card(dateReviewed: Date.now, answer: "Placeholder", details: "Placeholder", category: .lit, personalNotes: "Placeholder", rgba: convertColorToRGBA(Color.black))
     @State private var answerRevealed = false
     @State private var clues: [String] = [] // Only used if sequentialClues is true
     @State private var clueIndex = 0 // Only used if sequentialClues is true
@@ -37,6 +37,13 @@ struct PracticeView: View {
                     HStack {
                         Button {
                             answerRevealed.toggle()
+                            if answerRevealed {
+                                if !singleClue {
+                                    (currentCard as! Card).dateReviewed = .now
+                                } else {
+                                    (currentCard as! Pseudocard).parentCard.dateReviewed = .now
+                                }
+                            }
                         } label: {
                             Text(answerRevealed ? "Hide Answer" : "Show Answer")
                                 .foregroundStyle(.white)
@@ -44,7 +51,7 @@ struct PracticeView: View {
                                 .padding()
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color.blue.gradient)
+                                        .fill(Color.orange.gradient)
                                 )
                         }
                         
@@ -60,7 +67,7 @@ struct PracticeView: View {
                                     .padding()
                                     .background(
                                         RoundedRectangle(cornerRadius: 10)
-                                            .fill(Color.green.gradient)
+                                            .fill(Color.blue.gradient)
                                     )
                             }.disabled(clueIndex == maxClueIndex)
                                 .opacity(clueIndex == maxClueIndex ? 0.5 : 1)
@@ -69,10 +76,12 @@ struct PracticeView: View {
                         
                     }
                     
+                    Spacer()
+                    
                     // MARK: Next Card Button
                     Button {
                         answerRevealed = false
-                        currentCard = getNextCard(current: currentCard, shuffle: shuffle)
+                        currentCard = getNextCard(current: currentCard, singleClueMode: singleClue)
                         if sequentialClues {
                             clues = currentCard.personalNotes.split(whereSeparator: \.isNewline).map{ String($0) }
                             clues.reverse()
@@ -123,33 +132,53 @@ struct PracticeView: View {
     }
     
     // MARK: getNextCard
-    private func getNextCard(current: Card, shuffle: Bool) -> Card {
-        if shuffle {
-            if reviewCards.count > 1 {
-                var newCard = current
-                while newCard.persistentModelID == current.persistentModelID {
-                    guard let card = reviewCards.randomElement() else {
-                        print("Error: unable to get random element in reviewCards")
-                        return current
-                    }
-                    newCard = card
-                }
-                return newCard
-            } else {
-                return current
-            }
-        } else {
-            guard let currentIndex = reviewCards.firstIndex(of: current) else {
+    private func getNextCard(current: any CardLike, singleClueMode: Bool) -> any CardLike {
+//        if shuffle {
+//            if reviewCards.count > 1 {
+//                var newCard = current
+//                while newCard.persistentModelID == current.persistentModelID {
+//                    guard let card = reviewCards.randomElement() else {
+//                        print("Error: unable to get random element in reviewCards")
+//                        return current
+//                    }
+//                    newCard = card
+//                }
+//                return newCard
+//            } else {
+//                return current
+//            }
+//        } else {
+        if !singleClueMode {
+            
+            let cards = reviewCards as! [Card]
+            let currentCard = current as! Card
+            
+            guard let currentIndex = cards.firstIndex(of: currentCard) else {
                 print("Error: currentCard not in reviewCards")
                 return current
             }
-            if currentIndex + 1 < reviewCards.count {
-                return reviewCards[currentIndex + 1]
+            if currentIndex + 1 < cards.count {
+                return cards[currentIndex + 1]
                 
             } else {
-                return reviewCards[0]
+                return cards[0]
+            }
+        } else {
+            let cards = reviewCards as! [Pseudocard]
+            let currentCard = current as! Pseudocard
+            
+            guard let currentIndex = cards.firstIndex(of: currentCard) else {
+                print("Error: currentCard not in reviewCards")
+                return current
+            }
+            if currentIndex + 1 < cards.count {
+                return cards[currentIndex + 1]
+                
+            } else {
+                return cards[0]
             }
         }
+//        }
     }
     
     
@@ -161,18 +190,8 @@ struct CardView: View {
     let geometry: GeometryProxy
     let sequentialClues: Bool
     @Binding var answerRevealed: Bool
-//    @Binding var currentCard: Card
-//    @Binding var currentClueNumber: Int
     @Binding var question: String
     @Binding var answer: String
-    
-//    var question: String {
-//        currentCard.personalNotes
-//    }
-//    
-//    var answer: String {
-//        currentCard.answer
-//    }
     
     var body: some View {
         VStack {

@@ -44,8 +44,13 @@ enum Difficulty: String, Codable, CaseIterable, Identifiable {
 
 let colors: [Color] = [.red, .orange, .yellow, .green, .teal, .blue, .indigo, .purple, .pink, .brown]
 
+protocol CardLike {
+    var answer: String { get }
+    var personalNotes: String { get }
+}
+
 @Model
-class Card {
+class Card: CardLike {
     var dateReviewed: Date
     var answer: String
     var details: AttributedString
@@ -55,6 +60,8 @@ class Card {
     var categoryString: String {
         return category.rawValue
     }
+//    var parentCard: Card? = nil
+//    var parentCardID: String? = nil
     
 //    var categoryString: String {
 //        category.rawValue
@@ -68,4 +75,25 @@ class Card {
         self.personalNotes = personalNotes
         self.rgba = rgba
     }
+    
+//    init(dateReviewed: Date, answer: String, details: AttributedString, category: Category, personalNotes: String, rgba: [Double], parentCard: Card) {
+//        self.dateReviewed = dateReviewed
+//        self.answer = answer
+//        self.details = details
+//        self.category = category
+//        self.personalNotes = personalNotes
+//        self.rgba = rgba
+//        self.parentCard = parentCard
+//    }
+//    
+//    init(dateReviewed: Date, answer: String, details: AttributedString, category: Category, personalNotes: String, rgba: [Double], parentCardID: String) {
+//        self.dateReviewed = dateReviewed
+//        self.answer = answer
+//        self.details = details
+//        self.category = category
+//        self.personalNotes = personalNotes
+//        self.rgba = rgba
+//        self.parentCardID = parentCardID
+//    }
+
 }

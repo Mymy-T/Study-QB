@@ -15,7 +15,7 @@ struct ManageCardView: View {
     
     @State private var searchText = ""
     @State private var categories: [Category] = []
-    @State private var sortParameter: SortParameter = .reviewDateForward
+    @State private var sortParameter: SortParameter = .reviewDateReverse
     
     @Binding var manuallySelectedCards: [Card]?
     

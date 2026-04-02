@@ -10,6 +10,12 @@ import SwiftUI
 
 // TODO: Fix keyboard toolbar (to allow dismissal of keyboard)
 
+struct Pseudocard: CardLike, Equatable {
+    let answer: String
+    let personalNotes: String
+    let parentCard: Card
+}
+
 struct PracticeSetupView: View {
     @Query var cards: [Card]
     
@@ -20,8 +26,8 @@ struct PracticeSetupView: View {
     @State private var manuallySelectedCards: [Card] = []
     @State private var showingManualSelectionView = false
     
-    @State private var shuffleCards = false
     @State private var sequentialClues = false
+    @State private var singleClueMode = false
     
     @State private var showingCardNumberAlert = false
     @State private var cardNumberAlertMessage = ""
@@ -29,7 +35,7 @@ struct PracticeSetupView: View {
     @State private var missingNotesAlertMessage = ""
     
     @State private var practicing = false
-    @State private var cardsToReview: [Card] = []
+    @State private var cardsToReview: [any CardLike] = []
     
     var numOfAvaliableRandomCards: Int {
         var totalNum = 0
@@ -135,11 +141,21 @@ struct PracticeSetupView: View {
                 
                 // MARK: Practice Options
                 Section("Practice Options") {
-                    Toggle(isOn: $shuffleCards) {
-                        Text("Shuffle cards when reviewing?")
-                    }
                     Toggle(isOn: $sequentialClues) {
                         Text("Slowly reveal clues?")
+                    }
+                    Toggle(isOn: $singleClueMode) {
+                        Text("Only 1 clue per card at a time?")
+                    }
+                    .onChange(of: sequentialClues) { oldValue, newValue in
+                        if newValue == true {
+                            singleClueMode = false
+                        }
+                    }
+                    .onChange(of: singleClueMode) { oldValue, newValue in
+                        if newValue == true {
+                            sequentialClues = false
+                        }
                     }
                 }
                 
@@ -155,6 +171,11 @@ struct PracticeSetupView: View {
                             showingMissingNotesAlert = true
                             return
                         }
+                        
+                        if singleClueMode {
+                            cardsToReview = singleClueModePreprocessing(cards: cardsToReview as! [Card])
+                        }
+                        
                         practicing = true
                         
                     } label: {
@@ -174,7 +195,7 @@ struct PracticeSetupView: View {
             .navigationTitle("Review")
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(isPresented: $practicing) {
-                    PracticeView(reviewCards: cardsToReview, shuffle: shuffleCards, sequentialClues: sequentialClues)
+                    PracticeView(reviewCards: cardsToReview, sequentialClues: sequentialClues, singleClue: singleClueMode)
                 }
                 .navigationDestination(isPresented: $showingManualSelectionView) {
                     GeometryReader { geometry in
@@ -189,7 +210,7 @@ struct PracticeSetupView: View {
                                 .padding()
                         }
                         .background(.bar)
-                        .glassEffect()
+                        .glassEffectIfAvaliable()
                     }
                 }
                 .alert("Not Enough Cards", isPresented: $showingCardNumberAlert) {
@@ -231,7 +252,7 @@ struct PracticeSetupView: View {
     private func checkForMissingPersonalNotes() -> Bool { // Returns true if any card to be reviewed doesn't have any personal notes
         var alertMessage = "Some cards don't have any personal notes. When reviewing, you review your personal notes for your cards. Please add personal notes to the following cards: "
         var missingNotesCards: [Card] = []
-        for card in cardsToReview {
+        for card in (cardsToReview as! [Card]) {
             if card.personalNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 missingNotesCards.append(card)
             }
@@ -278,9 +299,23 @@ struct PracticeSetupView: View {
             }
             
         } else {
-            cardsToReview = manuallySelectedCards
+            cardsToReview = manuallySelectedCards.shuffled()
         }
         return cardsToReview
+    }
+    
+    // MARK: singleCluePreprocessing
+    private func singleClueModePreprocessing(cards: [Card]) -> [Pseudocard] {
+        var pseudocards: [Pseudocard] = [] // These aren't the true cards; each references a parent card to adjust date reviewed
+        for card in cards {
+            let clues = card.personalNotes.split(whereSeparator: \.isNewline).map{ String($0) }
+            for clue in clues {
+                // Values of dateReviewed, details, category, and rgba don't matter
+                let pseudocard = Pseudocard(answer: card.answer, personalNotes: clue, parentCard: card)
+                pseudocards.append(pseudocard)
+            }
+        }
+        return pseudocards.shuffled()
     }
     
     

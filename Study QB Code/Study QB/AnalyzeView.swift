@@ -49,7 +49,7 @@ struct AnalyzeView: View {
     
     
     let groqApiKey = Bundle.main.infoDictionary!["GroqApiKey"] as! String
-    let models = ["llama-3.3-70b-versatile", "moonshotai/kimi-k2-instruct-0905", "moonshotai/kimi-k2-instruct", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "openai/gpt-oss-safeguard-20b", "meta-llama/llama-4-maverick-17b-128e-instruct", "meta-llama/llama-4-scout-17b-16e-instruct"]
+    let models = ["llama-3.3-70b-versatile", "moonshotai/kimi-k2-instruct", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "openai/gpt-oss-safeguard-20b", "meta-llama/llama-4-scout-17b-16e-instruct"]
     @State private var modelIndex = 0
     var currentModelName: String {
         return models[modelIndex]
@@ -287,7 +287,7 @@ struct AnalyzeView: View {
                 case .maxTokensExceeded(let message):
                     responseText = AttributedString("Max tokens exceeded: \(message)")
                 case .rateLimitExceeded(let message):
-                    responseText = AttributedString("Rate limit exceeded, attempting to switch to another model: \n \(message)")
+                    responseText = AttributedString("Rate limit exceeded, attempting to switch to another model. Please try again. \n \n \n \n \n Error message: \(message)")
                     if modelIndex < models.count - 1 {
                         modelIndex += 1
                     } else {
