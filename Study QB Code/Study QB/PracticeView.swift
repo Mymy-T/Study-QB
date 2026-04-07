@@ -22,11 +22,42 @@ struct PracticeView: View {
     @State private var question = ""
     @State private var answer = ""
     
-    
+    var markedForReview: Bool {
+        if let card = currentCard as? Card {
+            return card.markedForReview
+        } else {
+            let card = currentCard as! Pseudocard
+            return card.parentCard.markedForReview
+        }
+    }
     
     var body: some View {
         GeometryReader { geometry in
             VStack(alignment: .center) {
+                
+                HStack {
+                    
+                    Spacer()
+                    
+                    // MARK: Mark for review button
+                    Button {
+                        if let card = currentCard as? Card {
+                            card.markedForReview.toggle()
+                        } else {
+                            let card = currentCard as! Pseudocard
+                            card.parentCard.markedForReview.toggle()
+                        }
+                    } label: {
+                        VStack {
+                            Image(systemName: markedForReview ? "star.fill" : "star")
+                                .resizable()
+                                .scaledToFit()
+                                .foregroundStyle(.yellow)
+                            Text("Mark For Review")
+                        }.frame(height: geometry.size.height/10)
+                    }
+                }.frame(width: geometry.size.width * 0.8)
+                
                 CardView(geometry: geometry, sequentialClues: sequentialClues, answerRevealed: $answerRevealed, question: $question, answer: $answer)
                 
                 if sequentialClues {
@@ -133,23 +164,7 @@ struct PracticeView: View {
     
     // MARK: getNextCard
     private func getNextCard(current: any CardLike, singleClueMode: Bool) -> any CardLike {
-//        if shuffle {
-//            if reviewCards.count > 1 {
-//                var newCard = current
-//                while newCard.persistentModelID == current.persistentModelID {
-//                    guard let card = reviewCards.randomElement() else {
-//                        print("Error: unable to get random element in reviewCards")
-//                        return current
-//                    }
-//                    newCard = card
-//                }
-//                return newCard
-//            } else {
-//                return current
-//            }
-//        } else {
         if !singleClueMode {
-            
             let cards = reviewCards as! [Card]
             let currentCard = current as! Card
             
@@ -178,7 +193,6 @@ struct PracticeView: View {
                 return cards[0]
             }
         }
-//        }
     }
     
     

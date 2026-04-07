@@ -27,6 +27,7 @@ struct CardEditorView: View {
         var category: Category
         var personalNotes: String
         var color: Color
+        var markedForReview: Bool
     }
     
     let geometry: GeometryProxy
@@ -37,6 +38,7 @@ struct CardEditorView: View {
 //    @State private var attributedTextSelection = AttributedTextSelection()
     @State private var category: Category = .lit
     @State private var personalNotes = ""
+    @State private var markedForReview = false
     @State private var color: Color = .red.opacity(0.4)
     
     @FocusState private var editingAnswer: Bool
@@ -56,7 +58,7 @@ struct CardEditorView: View {
     }
     
     var unsavedChangesPresent: Bool {
-        return !((initialState.dateReviewed == dateReviewed) && (initialState.answer == answer) && (initialState.details == AttributedString(details)) && (initialState.category == category) && (initialState.personalNotes == personalNotes) && (initialState.color == color))
+        return !((initialState.dateReviewed == dateReviewed) && (initialState.answer == answer) && (initialState.details == AttributedString(details)) && (initialState.category == category) && (initialState.personalNotes == personalNotes) && (initialState.color == color) && (initialState.markedForReview == markedForReview))
         
     }
     
@@ -64,7 +66,7 @@ struct CardEditorView: View {
         return existingCard != nil ? (!unsavedChangesPresent ? "Edit/View Card" : "Edit/View Card (unsaved changes)") : "Create Card"
     }
     
-    @State private var initialState = InitialState(dateReviewed: Date.now, answer: "", details: AttributedString(), category: .lit, personalNotes: "", color: .red.opacity(0.4))
+    @State private var initialState = InitialState(dateReviewed: Date.now, answer: "", details: AttributedString(), category: .lit, personalNotes: "", color: .red.opacity(0.4), markedForReview: false)
     
     
     
@@ -115,6 +117,23 @@ struct CardEditorView: View {
                 VStack {
                     Text("Here, you can list the facts that you want to review. List easier clues closer to the top and places clues on separate lines to make use of the clue reveal feature when reviewing.")
                         .font(.caption)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 5)
+                    HStack {
+                        Button {
+                            markedForReview.toggle()
+                        } label: {
+                            Label {
+                                Text("Marked For Review")
+                            } icon: {
+                                Image(systemName: markedForReview ? "star.fill" : "star")
+                                    .foregroundStyle(.yellow)
+                            }
+                            
+                        }
+                        Spacer()
+                    }.padding(.bottom, 5)
                     Divider()
                     ZStack {
                         TextEditor(text: $personalNotes)
@@ -200,11 +219,12 @@ struct CardEditorView: View {
             details = NSAttributedString(existingCard.details)
             category = existingCard.category
             personalNotes = existingCard.personalNotes
+            markedForReview = existingCard.markedForReview
             dateReviewed = existingCard.dateReviewed
             color = convertRGBAToColor(existingCard.rgba)
             initialCategoryAssigned = false
         }
-        initialState = InitialState(dateReviewed: dateReviewed, answer: answer, details: AttributedString(details), category: category, personalNotes: personalNotes, color: color)
+        initialState = InitialState(dateReviewed: dateReviewed, answer: answer, details: AttributedString(details), category: category, personalNotes: personalNotes, color: color, markedForReview: markedForReview)
     }
     
     // MARK: save()
@@ -214,10 +234,11 @@ struct CardEditorView: View {
             cardToEdit.details = AttributedString(details)
             cardToEdit.category = category
             cardToEdit.personalNotes = personalNotes
+            cardToEdit.markedForReview = markedForReview
             cardToEdit.dateReviewed = dateReviewed
             cardToEdit.rgba = convertColorToRGBA(color)
         } else {
-            let newCard = Card(dateReviewed: dateReviewed, answer: answer, details: AttributedString(details), category: category, personalNotes: personalNotes, rgba: convertColorToRGBA(color))
+            let newCard = Card(dateReviewed: dateReviewed, answer: answer, details: AttributedString(details), category: category, personalNotes: personalNotes, rgba: convertColorToRGBA(color), markedForReview: markedForReview)
             modelContext.insert(newCard)
         }
     }

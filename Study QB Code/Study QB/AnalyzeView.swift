@@ -33,7 +33,7 @@ struct AnalyzeView: View {
     @State private var answerQuery = ""
     @FocusState var queryKeyboard: Bool
     @State private var difficulties: Set<Int> = [2, 3, 4, 5]
-    @State private var difficulty: Difficulty = .hs
+//    @State private var difficulty: Difficulty = .hs
     @State private var categories: [Category] = [] // [] matches all categories
     @State private var responseText = AttributedString()
     @State private var prompt = ""
@@ -174,6 +174,14 @@ struct AnalyzeView: View {
                             Image(systemName: "questionmark.circle")
                         }
                     }
+                    ToolbarItem(placement: .keyboard) {
+                        HStack {
+                            Spacer()
+                            Button("Cancel") {
+                                queryKeyboard = false
+                            }
+                        }
+                    }
                 }
                 .sheet(isPresented: $analyzeHelpPresented) {
                     HelpView()
@@ -184,22 +192,38 @@ struct AnalyzeView: View {
         
     }
     
+    // MARK: fetchFrequencyList
+    private func fetchFrequencyList(category: Category, difficulties: Set<Int>) {
+        
+    }
+    
     // MARK: fetchData
-    private func fetchData(query: String, difficulty: Difficulty, categories: [Category]) async -> [Question] {
+    private func fetchData(query: String, difficulties: Set<Int>, categories: [Category]) async -> [Question] {
         
         let formattedQuery = query.replacingOccurrences(of: " ", with: "%20")
         
         // Preprocessing to obtain url
-        let difficulties: String = {
-            switch difficulty {
-            case .ms:
-                return "1"
-            case .hs:
-                return "2,3,4,5"
-            case .col:
-                return "6,7,8,9"
+        let difficultiesString: String = {
+//            switch difficulty {
+//            case .ms:
+//                return "1"
+//            case .hs:
+//                return "2,3,4,5"
+//            case .col:
+//                return "6,7,8,9"
+//            }
+            var string = ""
+            var index = 0
+            for difficulty in difficulties {
+                string += String(difficulty)
+                if index < difficulties.count - 1 {
+                    string += ","
+                }
             }
+            return string
         }()
+        
+        
         
         let categories: String = {
             if categories.count == 0 {
@@ -266,7 +290,7 @@ struct AnalyzeView: View {
         Task {
             do {
                 let groqClient = GroqClient(apiKey: groqApiKey)
-                let questionData = await fetchData(query: answerQuery, difficulty: .hs, categories: categories)
+                let questionData = await fetchData(query: answerQuery, difficulties: difficulties, categories: categories)
                 prompt = processFetchedData(questionData)
                 numQuestions = questionData.count
                 guard numQuestions != 0 else {

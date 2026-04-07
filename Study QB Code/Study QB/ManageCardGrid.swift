@@ -54,7 +54,7 @@ struct ManageCardGrid: View {
        ScrollView {
            if searchResults.count != 0 {
                LazyVGrid(columns: columns) {
-                   ForEach(searchResults.enumerated(), id: \.offset) { index, card in
+                   ForEach(Array(searchResults.enumerated()), id: \.offset) { index, card in
                        if editingMode {
                            // Presented when the "Manage Cards" tab is clicked
                            NavigationLink {

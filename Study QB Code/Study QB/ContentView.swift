@@ -12,10 +12,9 @@ enum Tabs: Hashable {
 }
 
 // TODO: add option to flag difficult cards for review; make sure existing cards don't break upon datamodel change
-// TODO: complete migration to min version of ios 18
 // TODO: Add freq lists
 // TODO: Add widgets/notifications to remind user to study a few cards for a short duration
-// TODO: Remove shuffle cards option and ensure that manually selected cards are also randomized
+// TODO: Add button to view card details when practicing
 
 
 struct ContentView: View {

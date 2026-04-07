@@ -31,16 +31,16 @@ enum Category: String, CaseIterable, Codable, Identifiable, Comparable {
     
 }
 
-enum Difficulty: String, Codable, CaseIterable, Identifiable {
-    case ms = "Middle School"
-    case hs = "High School"
-    case col = "College"
-    
-    var id: String {
-        self.rawValue
-    }
-    
-}
+//enum Difficulty: String, Codable, CaseIterable, Identifiable {
+//    case ms = "Middle School"
+//    case hs = "High School"
+//    case col = "College"
+//    
+//    var id: String {
+//        self.rawValue
+//    }
+//    
+//}
 
 let colors: [Color] = [.red, .orange, .yellow, .green, .teal, .blue, .indigo, .purple, .pink, .brown]
 
@@ -49,51 +49,84 @@ protocol CardLike {
     var personalNotes: String { get }
 }
 
-@Model
-class Card: CardLike {
-    var dateReviewed: Date
-    var answer: String
-    var details: AttributedString
-    var category: Category
-    var personalNotes: String
-    var rgba: [Double]
-    var categoryString: String {
-        return category.rawValue
-    }
-//    var parentCard: Card? = nil
-//    var parentCardID: String? = nil
-    
-//    var categoryString: String {
-//        category.rawValue
-//    }
-    
-    init(dateReviewed: Date, answer: String, details: AttributedString, category: Category, personalNotes: String, rgba: [Double]) {
-        self.dateReviewed = dateReviewed
-        self.answer = answer
-        self.details = details
-        self.category = category
-        self.personalNotes = personalNotes
-        self.rgba = rgba
-    }
-    
-//    init(dateReviewed: Date, answer: String, details: AttributedString, category: Category, personalNotes: String, rgba: [Double], parentCard: Card) {
-//        self.dateReviewed = dateReviewed
-//        self.answer = answer
-//        self.details = details
-//        self.category = category
-//        self.personalNotes = personalNotes
-//        self.rgba = rgba
-//        self.parentCard = parentCard
-//    }
-//    
-//    init(dateReviewed: Date, answer: String, details: AttributedString, category: Category, personalNotes: String, rgba: [Double], parentCardID: String) {
-//        self.dateReviewed = dateReviewed
-//        self.answer = answer
-//        self.details = details
-//        self.category = category
-//        self.personalNotes = personalNotes
-//        self.rgba = rgba
-//        self.parentCardID = parentCardID
-//    }
+typealias Card = CardSchemaV2.Card
 
+enum CardSchemaV1: VersionedSchema {
+    
+    static var versionIdentifier = Schema.Version(1, 0, 0)
+    static var models: [any PersistentModel.Type] {
+            [Card.self]
+        }
+    
+    @Model
+    class Card: CardLike {
+        var dateReviewed: Date
+        var answer: String
+        var details: AttributedString
+        var category: Category
+        var personalNotes: String
+        var rgba: [Double]
+        var categoryString: String {
+            return category.rawValue
+        }
+        
+        init(dateReviewed: Date, answer: String, details: AttributedString, category: Category, personalNotes: String, rgba: [Double]) {
+            self.dateReviewed = dateReviewed
+            self.answer = answer
+            self.details = details
+            self.category = category
+            self.personalNotes = personalNotes
+            self.rgba = rgba
+        }
+        
+        
+    }
+    
+}
+
+enum CardSchemaV2: VersionedSchema {
+    
+    static var versionIdentifier = Schema.Version(1, 1, 0)
+    static var models: [any PersistentModel.Type] {
+            [Card.self]
+        }
+    
+    @Model
+    class Card: CardLike {
+        var dateReviewed: Date
+        var answer: String
+        var details: AttributedString
+        var category: Category
+        var personalNotes: String
+        var rgba: [Double]
+        var categoryString: String {
+            return category.rawValue
+        }
+        var markedForReview: Bool = false
+        
+        init(dateReviewed: Date, answer: String, details: AttributedString, category: Category, personalNotes: String, rgba: [Double], markedForReview: Bool = false) {
+            self.dateReviewed = dateReviewed
+            self.answer = answer
+            self.details = details
+            self.category = category
+            self.personalNotes = personalNotes
+            self.rgba = rgba
+            self.markedForReview = markedForReview
+        }
+        
+        
+    }
+    
+}
+
+enum CardMigrationPlan: SchemaMigrationPlan {
+    static var schemas: [any VersionedSchema.Type] {
+        [CardSchemaV1.self, CardSchemaV2.self]
+    }
+    
+    static let migrateV1toV2 = MigrationStage.lightweight(fromVersion: CardSchemaV1.self, toVersion: CardSchemaV2.self)
+    
+    static var stages: [MigrationStage] {
+        [migrateV1toV2]
+    }
 }

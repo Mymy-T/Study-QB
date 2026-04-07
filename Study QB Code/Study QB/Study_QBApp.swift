@@ -12,10 +12,24 @@ import SwiftUI
 
 @main
 struct Study_QBApp: App {
+    
+    let container: ModelContainer
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .modelContainer(for: Card.self)
+                .modelContainer(container)
+        }
+    }
+    
+    init() {
+        do {
+            container = try ModelContainer(
+                for: Card.self,
+                migrationPlan: CardMigrationPlan.self
+            )
+        } catch {
+            fatalError("Failed to initialize model container.")
         }
     }
     
