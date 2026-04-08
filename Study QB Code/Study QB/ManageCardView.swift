@@ -15,6 +15,7 @@ struct ManageCardView: View {
     
     @State private var searchText = ""
     @State private var categories: [Category] = []
+    @State private var onlyShowMarked = false
     @State private var sortParameter: SortParameter = .reviewDateReverse
     
     @Binding var manuallySelectedCards: [Card]?
@@ -22,18 +23,27 @@ struct ManageCardView: View {
     var body: some View {
         NavigationStack {
             
-            ManageCardGrid(geometry: geometry, searchText: searchText, categories: categories, editingMode: editingMode, sortParameter: sortParameter, manuallySelectedCards: $manuallySelectedCards)
+            ManageCardGrid(geometry: geometry, searchText: searchText, categories: categories, onlyShowMarked: onlyShowMarked, editingMode: editingMode, sortParameter: sortParameter, manuallySelectedCards: $manuallySelectedCards)
                 .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search for a card")
                 .navigationTitle(editingMode ? "Your Cards" : "\(manuallySelectedCards!.count) selected")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     
+                    // MARK: Left toolbar items
                     ToolbarItemGroup(placement: .topBarLeading) {
                         
-                        // MARK: Filter Menu
+                        // Only show cards marked as review button
+                        Button {
+                            onlyShowMarked.toggle()
+                        } label: {
+                            Image(systemName: onlyShowMarked ? "star.fill" : "star")
+                                .foregroundStyle(.yellow)
+                        }
+                        
+                        // Filter Menu
                         CategorySelectionMenu(categories: $categories, labelView: categoryMenuLabel())
                         
-                        // MARK: Sort Picker
+                        // Sort Picker
                         Menu {
                             ForEach(SortParameter.allCases) { sortParam in
                                 SortSelectionButton(sortParameter: sortParam, selectedSortParameter: $sortParameter)

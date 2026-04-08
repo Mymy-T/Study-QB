@@ -25,6 +25,7 @@ struct PracticeSetupView: View {
     @State private var categories: [Category] = []
     @State private var manuallySelectedCards: [Card] = []
     @State private var showingManualSelectionView = false
+    @State private var onlyMarkedCards = false
     
     @State private var sequentialClues = false
     @State private var singleClueMode = false
@@ -39,8 +40,16 @@ struct PracticeSetupView: View {
     
     var numOfAvaliableRandomCards: Int {
         var totalNum = 0
+        var cardPool: [Card] = []
+        if onlyMarkedCards {
+            cardPool = cards.filter { cardToFilter in
+                return cardToFilter.markedForReview == true
+            }
+        } else {
+            cardPool = cards
+        }
         for category in categories {
-            let categoryCards = cards.filter { cardToFilter in
+            let categoryCards = cardPool.filter { cardToFilter in
                 return cardToFilter.category == category
             }
             totalNum += categoryCards.count
@@ -74,91 +83,109 @@ struct PracticeSetupView: View {
     
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Card Selection") {
-                    Picker("Card Selection Picker", selection: $useRandomCards) {
-                        Text("Random")
-                            .tag(true)
-                        Text("Manual")
-                            .tag(false)
-                    }.labelsHidden()
-                        .pickerStyle(.segmented)
-                    
-                    if useRandomCards {
-                        // MARK: Random Options
-                        VStack {
-                            Text("Enter the number of cards you want to review.")
-                            TextField("Number of Cards", value: $numberOfRandomCards, format: .number, prompt: Text("Enter a number"))
-                                .keyboardType(.numberPad)
-                                .focused($enteringCardNumber)
-                                .padding()
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .stroke(Color.blue.gradient)
-                                )
-                                .onChange(of: numberOfRandomCards) { _, newValue in
-                                    if newValue <= 0 {
-                                        numberOfRandomCards = 1
-                                    }
-                                    if (newValue > numOfAvaliableRandomCards) && (numOfAvaliableRandomCards != 0) {
-                                        numberOfRandomCards = numOfAvaliableRandomCards
-                                    }
-                                }
-                        }
+            GeometryReader { geometry in
+                Form {
+                    Section("Card Selection") {
+                        Picker("Card Selection Picker", selection: $useRandomCards) {
+                            Text("Random")
+                                .tag(true)
+                            Text("Manual")
+                                .tag(false)
+                        }.labelsHidden()
+                            .pickerStyle(.segmented)
                         
-                        VStack {
-                            Text("Customize the card categories you will be reviewing. Please make sure that the total number of cards across the selected categories in greater than or equal to the number of cards to review.")
-                            
-                            CategorySelectionMenu(categories: $categories, labelView: defaultCategoryMenuLabel())
-                            
-                            Text("There are a total of \(numOfAvaliableRandomCards) cards with the selected categories.")
-                            
-                        }
-                        
-                    } else {
-                        // MARK: Manual Options
-                        VStack(alignment: .center) {
-                            Text("**Select the cards you want to review.**")
-                            Text("You have currently selected **\(manuallySelectedCards.count)** card(s) to review. \(manualSelectionDescription)")
-                            
-                            Button {
-                                showingManualSelectionView = true
-                            } label: {
-                                Text("Edit Selection")
-                                    .foregroundStyle(.white)
-                                    .bold()
+                        if useRandomCards {
+                            // MARK: Random Options
+                            VStack {
+                                Text("Enter the number of cards you want to review.")
+                                TextField("Number of Cards", value: $numberOfRandomCards, format: .number, prompt: Text("Enter a number"))
+                                    .keyboardType(.numberPad)
+                                    .focused($enteringCardNumber)
                                     .padding()
-                                    .background(
+                                    .overlay(
                                         RoundedRectangle(cornerRadius: 10)
-                                            .fill(Color.green.gradient)
+                                            .stroke(Color.blue.gradient)
                                     )
+                                    .onChange(of: numberOfRandomCards) { _, newValue in
+                                        if newValue <= 0 {
+                                            numberOfRandomCards = 1
+                                        }
+                                        if (newValue > numOfAvaliableRandomCards) && (numOfAvaliableRandomCards != 0) {
+                                            numberOfRandomCards = numOfAvaliableRandomCards
+                                        }
+                                    }
+                                    .onChange(of: numOfAvaliableRandomCards) { _, newValue in
+                                        if numberOfRandomCards > newValue {
+                                            numberOfRandomCards = newValue
+                                        }
+                                    }
                             }
                             
+                            VStack {
+                                Text("Customize the card categories you will be reviewing. Please make sure that the total number of cards across the selected categories in greater than or equal to the number of cards to review.")
+                                    .font(.caption)
+                                
+                                CategorySelectionMenu(categories: $categories, labelView: defaultCategoryMenuLabel())
+                                    .padding(.vertical)
+                                
+                                Toggle(isOn: $onlyMarkedCards) {
+                                    Text("Use review-marked cards only?")
+                                        
+                                }.padding()
+                                .border(.orange)
+                                .frame(width: geometry.size.width*0.8)
+                                .padding(.bottom, 5)
+                                
+                                Text("There are a total of **\(numOfAvaliableRandomCards)** cards with the selected categories.")
+                                    .font(.caption)
+                                
+                            }
+                            
+                            
+                        } else {
+                            // MARK: Manual Options
+                            VStack(alignment: .center) {
+                                Text("**Select the cards you want to review.**")
+                                Text("You have currently selected **\(manuallySelectedCards.count)** card(s) to review. \(manualSelectionDescription)")
+                                
+                                Button {
+                                    showingManualSelectionView = true
+                                } label: {
+                                    Text("Edit Selection")
+                                        .foregroundStyle(.white)
+                                        .bold()
+                                        .padding()
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .fill(Color.green.gradient)
+                                        )
+                                }
+                                
+                            }.frame(width: geometry.size.width*0.9)
+                        }
+                        
+                    }
+                    
+                    // MARK: Practice Options
+                    Section("Practice Options") {
+                        Toggle(isOn: $sequentialClues) {
+                            Text("Slowly reveal clues?")
+                        }
+                        Toggle(isOn: $singleClueMode) {
+                            Text("Only 1 clue a time?")
+                        }
+                        .onChange(of: sequentialClues) { oldValue, newValue in
+                            if newValue == true {
+                                singleClueMode = false
+                            }
+                        }
+                        .onChange(of: singleClueMode) { oldValue, newValue in
+                            if newValue == true {
+                                sequentialClues = false
+                            }
                         }
                     }
-
-                }
-                
-                // MARK: Practice Options
-                Section("Practice Options") {
-                    Toggle(isOn: $sequentialClues) {
-                        Text("Slowly reveal clues?")
-                    }
-                    Toggle(isOn: $singleClueMode) {
-                        Text("Only 1 clue per card at a time?")
-                    }
-                    .onChange(of: sequentialClues) { oldValue, newValue in
-                        if newValue == true {
-                            singleClueMode = false
-                        }
-                    }
-                    .onChange(of: singleClueMode) { oldValue, newValue in
-                        if newValue == true {
-                            sequentialClues = false
-                        }
-                    }
-                }
-                
+                    
                     // MARK: Begin Button
                     Button {
                         // Perform any necessary checks
@@ -190,9 +217,9 @@ struct PracticeSetupView: View {
                             )
                     }.buttonStyle(.borderless)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                
-            }
-            .navigationTitle("Review")
+                    
+                }
+                .navigationTitle("Review")
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(isPresented: $practicing) {
                     PracticeView(reviewCards: cardsToReview, sequentialClues: sequentialClues, singleClue: singleClueMode)
@@ -201,6 +228,9 @@ struct PracticeSetupView: View {
                     GeometryReader { geometry in
                         ManageCardView(geometry: geometry, editingMode: false, manuallySelectedCards: Binding.init($manuallySelectedCards))
                     }
+                }
+                .onAppear {
+                    numberOfRandomCards = cards.count
                 }
                 .safeAreaInset(edge: .bottom) {
                     if enteringCardNumber {
@@ -223,6 +253,10 @@ struct PracticeSetupView: View {
                 } message: {
                     Text(missingNotesAlertMessage)
                 }
+                
+                
+            }
+            
 
         }
     }
@@ -278,9 +312,17 @@ struct PracticeSetupView: View {
         var cardsToReview: [Card] = []
         if useRandomCards {
             let randomCardPool: [Card] = {
+                var categoryIndependentPool: [Card] = [] // Contains all cards regardless of category, depending on the value of onlyMarkedCards
                 var pool: [Card] = []
+                if onlyMarkedCards {
+                    categoryIndependentPool = cards.filter { cardToFilter in
+                        return cardToFilter.markedForReview == true
+                    }
+                } else {
+                    categoryIndependentPool = cards
+                }
                 for category in categories {
-                    let categoryCards = cards.filter { cardToFilter in
+                    let categoryCards = categoryIndependentPool.filter { cardToFilter in
                         cardToFilter.category.id == category.id
                     }
                     pool.append(contentsOf: categoryCards)

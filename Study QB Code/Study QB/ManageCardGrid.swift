@@ -23,6 +23,7 @@ struct ManageCardGrid: View {
     
     let searchText: String
     let categories: [Category]
+    let onlyShowMarked: Bool
 //    let sortParameter: SortParameter
     
     var dateStrings: [String] {
@@ -39,7 +40,17 @@ struct ManageCardGrid: View {
     
     var searchResults: [Card] {
         let filteredCards = {
-            return cards.filter {
+            
+            var cardPool: [Card] = []
+            if onlyShowMarked {
+                cardPool = cards.filter {
+                    $0.markedForReview == true
+                }
+            } else {
+                cardPool = cards
+            }
+            
+            return cardPool.filter {
                 categories.contains($0.category)
             }
         }()
@@ -103,10 +114,11 @@ struct ManageCardGrid: View {
         }
     }
     
-    init(geometry: GeometryProxy, searchText: String, categories: [Category], editingMode: Bool, sortParameter: SortParameter, manuallySelectedCards: Binding<[Card]?>) {
+    init(geometry: GeometryProxy, searchText: String, categories: [Category], onlyShowMarked: Bool, editingMode: Bool, sortParameter: SortParameter, manuallySelectedCards: Binding<[Card]?>) {
         self.geometry = geometry
         self.searchText = searchText
         self.categories = categories
+        self.onlyShowMarked = onlyShowMarked
         self.editingMode = editingMode
         switch sortParameter {
         case .reviewDateReverse:

@@ -12,7 +12,7 @@ import SwiftUI
 
 struct AnalyzeView: View {
     
-    // Following structs for representing json data returned from api
+    // Following structs for representing api json data returned from query
     struct Question: Codable {
         var question_sanitized: String
         var answer_sanitized: String
@@ -26,6 +26,7 @@ struct AnalyzeView: View {
     struct Tossups: Codable {
         var tossups: Questions
     }
+    
     
     @Environment(\.modelContext) var modelContext
     
@@ -44,6 +45,10 @@ struct AnalyzeView: View {
     @State private var showEmptyQueryAlert = false
     
     @State private var analyzeHelpPresented = false
+    
+    @State private var showingFreqList = false
+    @State private var freqListItems: [FreqListItem] = []
+    @State private var awaitingFreqList = false
     
     let geometry: GeometryProxy
     
@@ -174,6 +179,22 @@ struct AnalyzeView: View {
                             Image(systemName: "questionmark.circle")
                         }
                     }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Menu {
+                            ForEach(Category.allCases) { cat in
+                                Button(cat.id) {
+                                    showingFreqList = true
+                                    awaitingFreqList = true
+                                    Task {
+                                        freqListItems = await fetchFrequencyList(category: cat, difficulties: difficulties)
+                                        awaitingFreqList = false
+                                    }
+                                }
+                            }
+                        } label: {
+                            Text("Freq Lists")
+                        }
+                    }
                     ToolbarItem(placement: .keyboard) {
                         HStack {
                             Spacer()
@@ -186,6 +207,11 @@ struct AnalyzeView: View {
                 .sheet(isPresented: $analyzeHelpPresented) {
                     HelpView()
                 }
+                .sheet(isPresented: $showingFreqList) {
+                    GeometryReader { geometry in
+                        FreqListView(awaitingFreqList: $awaitingFreqList, geometry: geometry, freqListItems: freqListItems)
+                    }
+                }
             
         }
         
@@ -193,8 +219,44 @@ struct AnalyzeView: View {
     }
     
     // MARK: fetchFrequencyList
-    private func fetchFrequencyList(category: Category, difficulties: Set<Int>) {
+    private func fetchFrequencyList(category: Category, difficulties: Set<Int>) async -> [FreqListItem] {
         
+        let difficultiesString: String = {
+            var string = ""
+            var index = 0
+            for difficulty in difficulties {
+                string += String(difficulty)
+                if index < difficulties.count - 1 {
+                    string += ","
+                }
+                index += 1
+            }
+            return string
+        }()
+        
+        let urlString = "https://www.qbreader.org/api/frequency-list?category=\(category.id)&difficulties=\(difficultiesString)&limit=100"
+        
+        let url = URL(string: urlString)
+        
+        guard let unwrappedUrl = url else {
+            print("Error with url")
+            return []
+        }
+        
+        var finalData: [FreqListItem] = []
+        
+        do {
+            let data = try await URLSession.shared.data(for: URLRequest(url: unwrappedUrl)) // data is tuple: (data, http code)
+            let decoder = JSONDecoder()
+            if let decodedData = try? decoder.decode(FrequencyList.self, from: data.0) {
+                finalData = decodedData.frequencyList
+            }
+        } catch {
+            print("An error occured while fetching data: \(error.localizedDescription)")
+            return []
+        }
+        
+        return finalData
     }
     
     // MARK: fetchData
@@ -204,14 +266,6 @@ struct AnalyzeView: View {
         
         // Preprocessing to obtain url
         let difficultiesString: String = {
-//            switch difficulty {
-//            case .ms:
-//                return "1"
-//            case .hs:
-//                return "2,3,4,5"
-//            case .col:
-//                return "6,7,8,9"
-//            }
             var string = ""
             var index = 0
             for difficulty in difficulties {
@@ -219,6 +273,7 @@ struct AnalyzeView: View {
                 if index < difficulties.count - 1 {
                     string += ","
                 }
+                index += 1
             }
             return string
         }()
@@ -244,7 +299,7 @@ struct AnalyzeView: View {
             }
         }()
         
-        let urlString = "https://www.qbreader.org/api/query?queryString=\(formattedQuery)&searchType=answer&exactPhrase=true&difficulties=\(difficulties)&categories=\(categories)"
+        let urlString = "https://www.qbreader.org/api/query?queryString=\(formattedQuery)&searchType=answer&exactPhrase=true&difficulties=\(difficultiesString)&categories=\(categories)"
         
         let url = URL(string: urlString)
         

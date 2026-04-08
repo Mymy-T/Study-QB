@@ -31,16 +31,21 @@ enum Category: String, CaseIterable, Codable, Identifiable, Comparable {
     
 }
 
-//enum Difficulty: String, Codable, CaseIterable, Identifiable {
-//    case ms = "Middle School"
-//    case hs = "High School"
-//    case col = "College"
-//    
-//    var id: String {
-//        self.rawValue
-//    }
-//    
-//}
+// Following structs for representing api json data returned from frequency-list
+struct FreqListItem: Codable, Identifiable {
+    var count: Int
+    var answer: String
+    var id = UUID()
+    
+    enum CodingKeys: String, CodingKey {
+        case count, answer
+    }
+    
+}
+
+struct FrequencyList: Codable {
+    var frequencyList: [FreqListItem]
+}
 
 let colors: [Color] = [.red, .orange, .yellow, .green, .teal, .blue, .indigo, .purple, .pink, .brown]
 
