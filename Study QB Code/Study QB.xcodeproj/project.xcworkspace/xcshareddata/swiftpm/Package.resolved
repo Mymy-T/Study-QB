@@ -1,5 +1,5 @@
 {
-  "originHash" : "786099004b461775fa7e60a8ca07d981ac8aa97d6af44494433f5b73c5a1f361",
+  "originHash" : "58f0440ca1aa808d29be3e3729eb2f0fa1649d1c578ede52f2289da2a9280dd3",
   "pins" : [
     {
       "identity" : "groq_swift",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "8a08b68e10e221d446842d953aa1e21f3fa3763a",
         "version" : "0.1.1"
+      }
+    },
+    {
+      "identity" : "swift-fsrs",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Mymy-T/swift-fsrs.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "f49a4d228911ac3cb8cb1d484bc3e185355d30af"
       }
     },
     {

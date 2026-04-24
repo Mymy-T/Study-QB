@@ -57,6 +57,18 @@ struct CardEditorView: View {
         return dateFormatter.string(from: dateReviewed)
     }
     
+    var dueDateString: String {
+        var dueDate = Date()
+        if let card = existingCard {
+            dueDate = card.fsrsCard!.due
+        }
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = locale
+        dateFormatter.dateStyle = .medium
+        dateFormatter.timeStyle = .short
+        return dateFormatter.string(from: dueDate)
+    }
+    
     var unsavedChangesPresent: Bool {
         return !((initialState.dateReviewed == dateReviewed) && (initialState.answer == answer) && (initialState.details == AttributedString(details)) && (initialState.category == category) && (initialState.personalNotes == personalNotes) && (initialState.color == color) && (initialState.markedForReview == markedForReview))
         
@@ -155,7 +167,8 @@ struct CardEditorView: View {
                         .focused($editingDetails)
                 }
             
-            Section("Date Reviewed") {
+            // MARK: Last Reviewed
+            Section("Last Reviewed") {
                 VStack {
                     Button {
                         dateReviewed = Date.now
@@ -171,6 +184,11 @@ struct CardEditorView: View {
                     
                     Text("This card was last reviewed on **\(dateString)**.")
                 }
+            }
+            
+            // MARK: Scheduled Date
+            Section("Scheduled Review Date (Spaced Repetition)") {
+                Text("This card is scheduled to be reviewed on **\(dueDateString)**")
             }
             
         }.scrollContentBackground(.hidden)

@@ -6,14 +6,20 @@
 //
 
 import SwiftData
+import SwiftFSRS
 import SwiftUI
 
 struct PracticeView: View {
+    
+    @Environment(\.dismiss) var dismiss
+    @Environment(\.locale) var locale
+    @Environment(\.modelContext) var modelContext
     
     let reviewCards: [any CardLike]
     // Various modes
     let sequentialClues: Bool
     let singleClue: Bool
+    let spacedRepetition: Bool
     @State var currentCard: any CardLike = Card(dateReviewed: Date.now, answer: "Placeholder", details: "Placeholder", category: .lit, personalNotes: "Placeholder", rgba: convertColorToRGBA(Color.black))
     @State private var answerRevealed = false
     @State private var clues: [String] = [] // Only used if sequentialClues is true
@@ -21,6 +27,10 @@ struct PracticeView: View {
     @State private var maxClueIndex = 0 // Only used if sequentialClues is true
     @State private var question = ""
     @State private var answer = ""
+    
+//    @State private var spacedRepetitionOld: FSRSCard
+    @State private var spacedRepetitionRating: Rating? = nil
+    @State private var finishedReviewing = false
     
     var markedForReview: Bool {
         if let card = currentCard as? Card {
@@ -31,8 +41,34 @@ struct PracticeView: View {
         }
     }
     
+    var projectedDueDateString: String {
+        if spacedRepetition {
+            let scheduler = LongTermScheduler()
+            let card = currentCard as! Card
+            guard let rating = spacedRepetitionRating else {
+                 return ""
+            }
+            
+            let review = scheduler.schedule(
+                card: card.fsrsCard!,
+                algorithm: .v5,
+                reviewRating: rating, // or .easy, .hard, .again
+                reviewTime: Date()
+            )
+            let dateFormatter = DateFormatter()
+            dateFormatter.locale = locale
+            dateFormatter.dateStyle = .medium
+            dateFormatter.timeStyle = .short
+            return dateFormatter.string(from: review.postReviewCard.due)
+            
+        } else {
+            return ""
+        }
+    }
+    
     var body: some View {
         GeometryReader { geometry in
+            
             VStack(alignment: .center) {
                 
                 HStack {
@@ -82,7 +118,7 @@ struct PracticeView: View {
                                 .padding()
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color.orange.gradient)
+                                        .fill(Color.purple.gradient)
                                 )
                         }
                         
@@ -109,30 +145,112 @@ struct PracticeView: View {
                     
                     Spacer()
                     
-                    // MARK: Next Card Button
-                    Button {
-                        answerRevealed = false
-                        currentCard = getNextCard(current: currentCard, singleClueMode: singleClue)
-                        if sequentialClues {
-                            clues = currentCard.personalNotes.split(whereSeparator: \.isNewline).map{ String($0) }
-                            clues.reverse()
-                            maxClueIndex = clues.count - 1
-                            clueIndex = 0
-                            question = clues[clueIndex]
-                        } else {
-                            question = currentCard.personalNotes
+                    // MARK: Spaced Repetition Buttons
+                    if spacedRepetition {
+                        VStack {
+                            Text("**\(projectedDueDateString)**")
+                            HStack {
+                                Button {
+                                    spacedRepetitionRating = .again
+                                } label: {
+                                    Text("Again")
+                                        .foregroundStyle(.white)
+                                        .bold()
+                                        .padding()
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .fill(Color.red.gradient)
+                                        )
+                                        .border(.blue, width: spacedRepetitionRating == Rating.again ? 4 : 0)
+                                }
+                                
+                                Button {
+                                    spacedRepetitionRating = .hard
+                                } label: {
+                                    Text("Hard")
+                                        .foregroundStyle(.white)
+                                        .bold()
+                                        .padding()
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .fill(Color.orange.gradient)
+                                        )
+                                        .border(.blue, width: spacedRepetitionRating == Rating.hard ? 4 : 0)
+                                }
+                                
+                                Button {
+                                    spacedRepetitionRating = .good
+                                } label: {
+                                    Text("Good")
+                                        .foregroundStyle(.white)
+                                        .bold()
+                                        .padding()
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .fill(Color.yellow.gradient)
+                                        )
+                                        .border(.blue, width: spacedRepetitionRating == Rating.good ? 4 : 0)
+                                }
+                                
+                                Button {
+                                    spacedRepetitionRating = .easy
+                                } label: {
+                                    Text("Easy")
+                                        .foregroundStyle(.white)
+                                        .bold()
+                                        .padding()
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .fill(Color.green.gradient)
+                                        )
+                                        .border(.blue, width: spacedRepetitionRating == Rating.easy ? 4 : 0)
+                                }
+                                
+                            } // End of HStack
+                            
                         }
-                        answer = currentCard.answer
-                    } label: {
-                        Text("Next Card")
-                            .foregroundStyle(.white)
-                            .bold()
-                            .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.green.gradient)
-                            )
-                    }
+                        
+                    } // End of if
+                    Spacer()
+                    // MARK: Next Card Button
+                        Button {
+                            answerRevealed = false
+                            if spacedRepetition {
+                                scheduleReview(card: currentCard as! Card, rating: spacedRepetitionRating!)
+                                (currentCard, finishedReviewing) = getNextCard(current: currentCard, singleClueMode: singleClue)
+                                spacedRepetitionRating = nil
+                            } else {
+                                (currentCard, _) = getNextCard(current: currentCard, singleClueMode: singleClue)
+                            }
+                            if sequentialClues {
+                                clues = currentCard.personalNotes.split(whereSeparator: \.isNewline).map{ String($0) }
+                                clues.reverse()
+                                maxClueIndex = clues.count - 1
+                                clueIndex = 0
+                                question = clues[clueIndex]
+                            } else {
+                                question = currentCard.personalNotes
+                            }
+                            answer = currentCard.answer
+                        } label: {
+                            Text("Next Card")
+                                .foregroundStyle(.white)
+                                .bold()
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.green.gradient)
+                                )
+                        }
+                        .disabled(((spacedRepetition == true && spacedRepetitionRating == nil) ? true : false))
+                        .opacity(((spacedRepetition == true && spacedRepetitionRating == nil) ? 0.4 : 1))
+                        
+                    
+                    
+                    
+                    // MARK: Undo Button
+                    // for spaced repetition only
+                    // MARK: TODO
                     
                 }
                 
@@ -142,7 +260,7 @@ struct PracticeView: View {
             }.onAppear {
                 currentCard = reviewCards[0]
                 if sequentialClues {
-                    clues = currentCard.personalNotes.split(whereSeparator: \.isNewline).map{ String($0) }
+                    clues = currentCard.personalNotes.split(whereSeparator: \.isNewline).map { String($0) }
                     clues.reverse()
                     maxClueIndex = clues.count - 1
                     clueIndex = 0
@@ -153,30 +271,50 @@ struct PracticeView: View {
                     answer = currentCard.answer
                 }
             }
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.backward")
+                    }
+                }
+            }
+            .toolbarVisibility(.hidden, for: .tabBar)
             .frame(width: geometry.size.width * 0.9, height: geometry.size.height * 0.9)
             .position(x: geometry.size.width * 0.5, y: geometry.size.height * 0.5)
+            .opacity(finishedReviewing ? 0 : 1)
+            .allowsHitTesting(finishedReviewing ? false : true)
             
-        }
+            VStack {
+                Text("Congrats!")
+                    .font(.headline)
+                Text("You have finsihed all of your automatically scheduled cards for today.")
+            }.opacity(finishedReviewing ? 1 : 0)
+            
+        } // End of GeometryReader
         
         
         
     }
     
     // MARK: getNextCard
-    private func getNextCard(current: any CardLike, singleClueMode: Bool) -> any CardLike {
+    private func getNextCard(current: any CardLike, singleClueMode: Bool) -> (any CardLike, Bool) {
+        // returns a typle of (nextCard, complete) where complete is true if a full pass of the cards has been completed
         if !singleClueMode {
             let cards = reviewCards as! [Card]
             let currentCard = current as! Card
             
             guard let currentIndex = cards.firstIndex(of: currentCard) else {
                 print("Error: currentCard not in reviewCards")
-                return current
+                return (current, false)
             }
             if currentIndex + 1 < cards.count {
-                return cards[currentIndex + 1]
+                return (cards[currentIndex + 1], false)
                 
             } else {
-                return cards[0]
+                return (cards[0], true)
             }
         } else {
             let cards = reviewCards as! [Pseudocard]
@@ -184,17 +322,42 @@ struct PracticeView: View {
             
             guard let currentIndex = cards.firstIndex(of: currentCard) else {
                 print("Error: currentCard not in reviewCards")
-                return current
+                return (current, false)
             }
             if currentIndex + 1 < cards.count {
-                return cards[currentIndex + 1]
+                return (cards[currentIndex + 1], false)
                 
             } else {
-                return cards[0]
+                return (cards[0], true)
             }
         }
     }
     
+    // MARK: scheduleReview
+    private func scheduleReview(card: Card, rating: Rating) {
+        // Returns a tuple of (oldCard, newCard) where newCard has an fsrsCard with the new scheduled review date and other properties
+        let scheduler = LongTermScheduler()
+        
+        let review = scheduler.schedule(
+            card: card.fsrsCard!,
+            algorithm: .v5,
+            reviewRating: rating, // or .easy, .hard, .again
+            reviewTime: Date()
+        )
+        
+//        let newCard = Card(dateReviewed: card.dateReviewed, answer: card.answer, details: card.details, category: card.category, personalNotes: card.personalNotes, rgba: card.rgba, markedForReview: card.markedForReview, fsrsCard: review.postReviewCard)
+        
+//        spacedRepetitionOld = card.fsrsCard
+        
+        card.fsrsCard = review.postReviewCard
+        
+        do {
+            try modelContext.save()
+        } catch {
+            print("Error in saving scheduled card")
+        }
+        
+    }
     
     
 }

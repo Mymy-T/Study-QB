@@ -17,9 +17,14 @@ struct Pseudocard: CardLike, Equatable {
 }
 
 struct PracticeSetupView: View {
+    
+    enum CardSelectionMethod {
+        case random, manual, automatic
+    }
+    
     @Query var cards: [Card]
     
-    @State private var useRandomCards = true
+    @State private var cardSelectionMethod = PracticeSetupView.CardSelectionMethod.automatic
     @State private var numberOfRandomCards = 5
     @FocusState private var enteringCardNumber: Bool
     @State private var categories: [Category] = []
@@ -57,6 +62,19 @@ struct PracticeSetupView: View {
         return totalNum
     }
     
+    var numScheduledCards: Int {
+        var num = 0
+        for card in cards {
+            let today = Calendar.current.startOfDay(for: Date())
+            let dueDate = Calendar.current.startOfDay(for: card.fsrsCard!.due)
+            
+            if dueDate <= today {
+                num += 1
+            }
+        }
+        return num
+    }
+    
     
     var manualSelectionDescription: String {
         var description = ""
@@ -86,15 +104,17 @@ struct PracticeSetupView: View {
             GeometryReader { geometry in
                 Form {
                     Section("Card Selection") {
-                        Picker("Card Selection Picker", selection: $useRandomCards) {
+                        Picker("Card Selection Picker", selection: $cardSelectionMethod) {
+                            Text("Automatic")
+                                .tag(CardSelectionMethod.automatic)
                             Text("Random")
-                                .tag(true)
+                                .tag(CardSelectionMethod.random)
                             Text("Manual")
-                                .tag(false)
+                                .tag(CardSelectionMethod.manual)
                         }.labelsHidden()
                             .pickerStyle(.segmented)
                         
-                        if useRandomCards {
+                        if cardSelectionMethod == .random {
                             // MARK: Random Options
                             VStack {
                                 Text("Enter the number of cards you want to review.")
@@ -142,7 +162,7 @@ struct PracticeSetupView: View {
                             }
                             
                             
-                        } else {
+                        } else if cardSelectionMethod == .manual {
                             // MARK: Manual Options
                             VStack(alignment: .center) {
                                 Text("**Select the cards you want to review.**")
@@ -162,6 +182,16 @@ struct PracticeSetupView: View {
                                 }
                                 
                             }.frame(width: geometry.size.width*0.9)
+                        } else {
+                            // MARK: Automatic
+                            VStack {
+                                Text("The cards to review will be automatically designated by the **spaced reptition** algorithm.")
+                                Text("Unfortunantely, single clue mode isn't avaliable for this setting.")
+                                    .font(.caption)
+                                    .padding()
+                                Text("**\(numScheduledCards)** cards to review today.")
+                                    .font(.caption)
+                            }
                         }
                         
                     }
@@ -170,20 +200,25 @@ struct PracticeSetupView: View {
                     Section("Practice Options") {
                         Toggle(isOn: $sequentialClues) {
                             Text("Slowly reveal clues?")
-                        }
-                        Toggle(isOn: $singleClueMode) {
-                            Text("Only 1 clue a time?")
-                        }
-                        .onChange(of: sequentialClues) { oldValue, newValue in
+                        }.onChange(of: sequentialClues) { oldValue, newValue in
                             if newValue == true {
                                 singleClueMode = false
                             }
                         }
-                        .onChange(of: singleClueMode) { oldValue, newValue in
-                            if newValue == true {
-                                sequentialClues = false
+                        
+                        if cardSelectionMethod != .automatic {
+                            
+                            Toggle(isOn: $singleClueMode) {
+                                Text("Only 1 clue at a time?")
+                            }
+                            .onChange(of: singleClueMode) { oldValue, newValue in
+                                if newValue == true {
+                                    sequentialClues = false
+                                }
                             }
                         }
+                        
+                        
                     }
                     
                     // MARK: Begin Button
@@ -222,7 +257,7 @@ struct PracticeSetupView: View {
                 .navigationTitle("Review")
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(isPresented: $practicing) {
-                    PracticeView(reviewCards: cardsToReview, sequentialClues: sequentialClues, singleClue: singleClueMode)
+                    PracticeView(reviewCards: cardsToReview, sequentialClues: sequentialClues, singleClue: singleClueMode, spacedRepetition: (cardSelectionMethod == .automatic ? true : false))
                 }
                 .navigationDestination(isPresented: $showingManualSelectionView) {
                     GeometryReader { geometry in
@@ -267,12 +302,12 @@ struct PracticeSetupView: View {
             cardNumberAlertMessage = "Please create some cards first!"
             return true
         }
-        if useRandomCards {
+        if cardSelectionMethod == .random {
             if numOfAvaliableRandomCards < numberOfRandomCards {
                 cardNumberAlertMessage = "Please make sure that the number of cards is less than or equal the amount of cards you have subject to the category conditions."
                 return true
             }
-        } else {
+        } else if cardSelectionMethod == .manual {
             if manuallySelectedCards.count == 0 {
                 cardNumberAlertMessage = "Please select at least 1 card."
                 return true
@@ -310,7 +345,7 @@ struct PracticeSetupView: View {
     // MARK: getReviewCards
     private func getReviewCards() -> [Card] {
         var cardsToReview: [Card] = []
-        if useRandomCards {
+        if cardSelectionMethod == .random {
             let randomCardPool: [Card] = {
                 var categoryIndependentPool: [Card] = [] // Contains all cards regardless of category, depending on the value of onlyMarkedCards
                 var pool: [Card] = []
@@ -340,8 +375,18 @@ struct PracticeSetupView: View {
                 }
             }
             
-        } else {
+        } else if cardSelectionMethod == .manual {
             cardsToReview = manuallySelectedCards.shuffled()
+        } else {
+            for card in cards {
+                let today = Calendar.current.startOfDay(for: Date())
+                let dueDate = Calendar.current.startOfDay(for: card.fsrsCard!.due)
+                
+                if dueDate <= today {
+                    cardsToReview.append(card)
+                }
+            }
+            cardsToReview = cardsToReview.shuffled()
         }
         return cardsToReview
     }
