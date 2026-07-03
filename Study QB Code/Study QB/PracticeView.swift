@@ -58,7 +58,7 @@ struct PracticeView: View {
             let dateFormatter = DateFormatter()
             dateFormatter.locale = locale
             dateFormatter.dateStyle = .medium
-            dateFormatter.timeStyle = .short
+            dateFormatter.timeStyle = .none
             return dateFormatter.string(from: review.postReviewCard.due)
             
         } else {
@@ -290,7 +290,7 @@ struct PracticeView: View {
             VStack {
                 Text("Congrats!")
                     .font(.headline)
-                Text("You have finsihed all of your automatically scheduled cards for today.")
+                Text("You have finished all of your automatically scheduled cards for today.")
             }.opacity(finishedReviewing ? 1 : 0)
             
         } // End of GeometryReader

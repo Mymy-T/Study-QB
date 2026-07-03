@@ -65,7 +65,7 @@ struct CardEditorView: View {
         let dateFormatter = DateFormatter()
         dateFormatter.locale = locale
         dateFormatter.dateStyle = .medium
-        dateFormatter.timeStyle = .short
+        dateFormatter.timeStyle = .none
         return dateFormatter.string(from: dueDate)
     }
     

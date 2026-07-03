@@ -8,11 +8,10 @@
 import SwiftUI
 
 enum Tabs: Hashable {
-    case analyze, manage, review
+    case analyze, manage, review, settings
 }
 
-// TODO: add option to flag difficult cards for review; make sure existing cards don't break upon datamodel change
-// TODO: Add freq lists
+
 // TODO: Add widgets/notifications to remind user to study a few cards for a short duration
 // TODO: Add button to view card details when practicing
 
@@ -29,14 +28,17 @@ struct ContentView: View {
                     AnalyzeView(geometry: geometry)
                 }
             }
-            Tab("Manage Cards", systemImage: "note.text", value: .manage) {
+            Tab("Cards", systemImage: "note.text", value: .manage) {
                 GeometryReader { geometry in
                     ManageCardView(geometry: geometry, editingMode: true, manuallySelectedCards: .constant(nil))
                 }
             }
-            Tab("Review Cards", systemImage: "timer", value: .review) {
+            Tab("Review", systemImage: "timer", value: .review) {
                 PracticeSetupView()
                     .id(reviewId)
+            }
+            Tab("Settings", systemImage: "gear", value: .settings) {
+                SettingsView()
             }
         }.onChange(of: selectedTab) { oldValue, newValue in
             if newValue == .review {
