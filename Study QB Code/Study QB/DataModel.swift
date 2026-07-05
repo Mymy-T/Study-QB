@@ -55,9 +55,10 @@ protocol CardLike {
     var personalNotes: String { get }
 }
 
-typealias Card = CardSchemaV3.Card
+typealias Card = CardSchemaV4.Card
 typealias FSRSCard = SwiftFSRS.Card
 
+// MARK: SchemaV1
 enum CardSchemaV1: VersionedSchema {
     
     static var versionIdentifier = Schema.Version(1, 0, 0)
@@ -91,6 +92,7 @@ enum CardSchemaV1: VersionedSchema {
     
 }
 
+// MARK: SchemaV2
 enum CardSchemaV2: VersionedSchema {
     
     static var versionIdentifier = Schema.Version(1, 1, 0)
@@ -126,6 +128,7 @@ enum CardSchemaV2: VersionedSchema {
     
 }
 
+// MARK: SchemaV3
 enum CardSchemaV3: VersionedSchema {
     
     static var versionIdentifier = Schema.Version(1, 2, 0)
@@ -163,12 +166,53 @@ enum CardSchemaV3: VersionedSchema {
     
 }
 
+// MARK: SchemaV4
+enum CardSchemaV4: VersionedSchema {
+
+    static var versionIdentifier = Schema.Version(1, 3, 0)
+    static var models: [any PersistentModel.Type] {
+            [Card.self]
+        }
+
+    @Model
+    class Card: CardLike {
+        var dateReviewed: Date
+        var answer: String
+        var details: AttributedString
+        var category: Category
+        var personalNotes: String
+        var rgba: [Double]
+        var categoryString: String {
+            return category.rawValue
+        }
+        var markedForReview: Bool = false
+        var fsrsCard: FSRSCard?
+        var cachedTossup: String? = nil
+
+        init(dateReviewed: Date, answer: String, details: AttributedString, category: Category, personalNotes: String, rgba: [Double], markedForReview: Bool = false, fsrsCard: FSRSCard = FSRSCard(), cachedTossup: String? = nil) {
+            self.dateReviewed = dateReviewed
+            self.answer = answer
+            self.details = details
+            self.category = category
+            self.personalNotes = personalNotes
+            self.rgba = rgba
+            self.markedForReview = markedForReview
+            self.fsrsCard = fsrsCard
+            self.cachedTossup = cachedTossup
+        }
+
+    }
+
+}
+
+// MARK: CardMigrationPlan
 enum CardMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [CardSchemaV1.self, CardSchemaV2.self, CardSchemaV3.self]
+        [CardSchemaV1.self, CardSchemaV2.self, CardSchemaV3.self, CardSchemaV4.self]
     }
-    
+
     static let migrateV1toV2 = MigrationStage.lightweight(fromVersion: CardSchemaV1.self, toVersion: CardSchemaV2.self)
+    static let migrateV3toV4 = MigrationStage.lightweight(fromVersion: CardSchemaV3.self, toVersion: CardSchemaV4.self)
     static let migrateV2toV3 = MigrationStage.custom(
         fromVersion: CardSchemaV2.self,
         toVersion: CardSchemaV3.self,
@@ -185,6 +229,6 @@ enum CardMigrationPlan: SchemaMigrationPlan {
     )
     
     static var stages: [MigrationStage] {
-        [migrateV1toV2, migrateV2toV3]
+        [migrateV1toV2, migrateV2toV3, migrateV3toV4]
     }
 }

@@ -15,9 +15,22 @@
 		CA842D172EAAE2EC00415BB7 /* Study QB.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Study QB.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		CAF130AE2FFAAD6500DBDB84 /* Exceptions for "Study QB" folder in "Study QB" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				example_secrets.xcconfig,
+			);
+			target = CA842D162EAAE2EC00415BB7 /* Study QB */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		CA842D192EAAE2EC00415BB7 /* Study QB */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				CAF130AE2FFAAD6500DBDB84 /* Exceptions for "Study QB" folder in "Study QB" target */,
+			);
 			path = "Study QB";
 			sourceTree = "<group>";
 		};

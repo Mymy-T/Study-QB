@@ -21,6 +21,10 @@ struct PracticeSetupView: View {
     enum CardSelectionMethod {
         case random, manual, automatic
     }
+
+    enum PracticeStyle {
+        case classic, buzzIn
+    }
     
     @Query var cards: [Card]
     
@@ -32,6 +36,7 @@ struct PracticeSetupView: View {
     @State private var showingManualSelectionView = false
     @State private var onlyMarkedCards = false
     
+    @State private var practiceStyle: PracticeStyle = .classic
     @State private var sequentialClues = false
     @State private var singleClueMode = false
     
@@ -198,27 +203,39 @@ struct PracticeSetupView: View {
                     
                     // MARK: Practice Options
                     Section("Practice Options") {
-                        Toggle(isOn: $sequentialClues) {
-                            Text("Slowly reveal clues?")
-                        }.onChange(of: sequentialClues) { oldValue, newValue in
-                            if newValue == true {
+                        Picker("Practice Style", selection: $practiceStyle) {
+                            Text("Classic").tag(PracticeStyle.classic)
+                            Text("Buzz In").tag(PracticeStyle.buzzIn)
+                        }
+                        .pickerStyle(.segmented)
+                        .onChange(of: practiceStyle) { _, new in
+                            if new == .buzzIn {
+                                sequentialClues = false
                                 singleClueMode = false
                             }
                         }
-                        
-                        if cardSelectionMethod != .automatic {
-                            
-                            Toggle(isOn: $singleClueMode) {
-                                Text("Only 1 clue at a time?")
+
+                        if practiceStyle == .classic {
+                            Toggle(isOn: $sequentialClues) {
+                                Text("Slowly reveal clues?")
+                            }.onChange(of: sequentialClues) { _, newValue in
+                                if newValue == true { singleClueMode = false }
                             }
-                            .onChange(of: singleClueMode) { oldValue, newValue in
-                                if newValue == true {
-                                    sequentialClues = false
+
+                            if cardSelectionMethod != .automatic {
+                                Toggle(isOn: $singleClueMode) {
+                                    Text("Only 1 clue at a time?")
+                                }
+                                .onChange(of: singleClueMode) { _, newValue in
+                                    if newValue == true { sequentialClues = false }
                                 }
                             }
                         }
-                        
-                        
+
+                        if practiceStyle == .buzzIn {
+                            Text("Words from a generated tossup stream one at a time. Tap **Buzz!** when you know the answer.")
+                                .font(.caption)
+                        }
                     }
                     
                     // MARK: Begin Button
@@ -257,7 +274,19 @@ struct PracticeSetupView: View {
                 .navigationTitle("Review")
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(isPresented: $practicing) {
-                    PracticeView(reviewCards: cardsToReview, sequentialClues: sequentialClues, singleClue: singleClueMode, spacedRepetition: (cardSelectionMethod == .automatic ? true : false))
+                    if practiceStyle == .buzzIn {
+                        BuzzInView(
+                            reviewCards: cardsToReview as! [Card],
+                            spacedRepetition: cardSelectionMethod == .automatic
+                        )
+                    } else {
+                        PracticeView(
+                            reviewCards: cardsToReview,
+                            sequentialClues: sequentialClues,
+                            singleClue: singleClueMode,
+                            spacedRepetition: cardSelectionMethod == .automatic
+                        )
+                    }
                 }
                 .navigationDestination(isPresented: $showingManualSelectionView) {
                     GeometryReader { geometry in
