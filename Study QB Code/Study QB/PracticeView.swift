@@ -27,6 +27,7 @@ struct PracticeView: View {
     @State private var maxClueIndex = 0 // Only used if sequentialClues is true
     @State private var question = ""
     @State private var answer = ""
+    @State private var showingDetails = false
     
 //    @State private var spacedRepetitionOld: FSRSCard
     @State private var spacedRepetitionRating: Rating? = nil
@@ -94,16 +95,36 @@ struct PracticeView: View {
                     }
                 }.frame(width: geometry.size.width * 0.8)
                 
-                CardView(geometry: geometry, sequentialClues: sequentialClues, answerRevealed: $answerRevealed, question: $question, answer: $answer)
+                // MARK: CardView
+                CardView(geometry: geometry, sequentialClues: sequentialClues, answerRevealed: $answerRevealed, question: $question, answer: $answer, onRevealAnswer: {
+                    withAnimation(.easeInOut(duration: 0.25)) { answerRevealed.toggle() }
+                }, onNextClue: {
+                    guard clueIndex < maxClueIndex else { return }
+                    withAnimation {
+                        clueIndex += 1
+                        question += "\n" + clues[clueIndex]
+                    }
+                })
+                    .id(answer)
+                    .transition(.opacity)
                 
                 if sequentialClues {
-                    Text("\(clueIndex + 1) out of \(maxClueIndex + 1) clues revealed.")
+                    VStack(spacing: 4) {
+                        ProgressView(value: Double(clueIndex + 1), total: Double(maxClueIndex + 1))
+                        .animation(.spring(duration: 0.3), value: clueIndex)
+                        .padding(.horizontal)
+                        Text("\(clueIndex + 1) of \(maxClueIndex + 1) clues revealed")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 
                 VStack {
                     HStack {
                         Button {
-                            answerRevealed.toggle()
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                answerRevealed.toggle()
+                            }
                             if answerRevealed {
                                 if !singleClue {
                                     (currentCard as! Card).dateReviewed = .now
@@ -125,8 +146,10 @@ struct PracticeView: View {
                         if sequentialClues {
                             // MARK: Next Clue Button
                             Button {
-                                clueIndex += 1
-                                question += ("\n" + clues[clueIndex])
+                                withAnimation(.easeIn(duration: 0.2)) {
+                                    clueIndex += 1
+                                    question += ("\n" + clues[clueIndex])
+                                }
                             } label: {
                                 Text("Next Clue")
                                     .foregroundStyle(.white)
@@ -217,10 +240,14 @@ struct PracticeView: View {
                             answerRevealed = false
                             if spacedRepetition {
                                 scheduleReview(card: currentCard as! Card, rating: spacedRepetitionRating!)
-                                (currentCard, finishedReviewing) = getNextCard(current: currentCard, singleClueMode: singleClue)
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    (currentCard, finishedReviewing) = getNextCard(current: currentCard, singleClueMode: singleClue)
+                                }
                                 spacedRepetitionRating = nil
                             } else {
-                                (currentCard, _) = getNextCard(current: currentCard, singleClueMode: singleClue)
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    (currentCard, _) = getNextCard(current: currentCard, singleClueMode: singleClue)
+                                }
                             }
                             if sequentialClues {
                                 clues = currentCard.personalNotes.split(whereSeparator: \.isNewline).map{ String($0) }
@@ -280,12 +307,50 @@ struct PracticeView: View {
                         Image(systemName: "chevron.backward")
                     }
                 }
+                
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingDetails = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                    }
+                }
+                
             }
             .toolbarVisibility(.hidden, for: .tabBar)
             .frame(width: geometry.size.width * 0.9, height: geometry.size.height * 0.9)
             .position(x: geometry.size.width * 0.5, y: geometry.size.height * 0.5)
             .opacity(finishedReviewing ? 0 : 1)
             .allowsHitTesting(finishedReviewing ? false : true)
+            .sheet(isPresented: $showingDetails) {
+                NavigationStack {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text(currentCard.answer)
+                                .font(.title2).bold()
+                            if let card = currentCard as? Card {
+                                Text(card.details)
+                                    .padding()
+                            } else if let pseudocard = currentCard as? Pseudocard {
+                                Text(pseudocard.parentCard.details)
+                                    .padding()
+                            }
+                        }
+                        .padding()
+                    }
+                    .navigationTitle("Details")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") { showingDetails = false }
+                        }
+                    }
+                }
+            }
+            .sensoryFeedback(.impact(weight: .light),  trigger: clueIndex)
+            .sensoryFeedback(.impact(weight: .medium), trigger: answerRevealed)
+            .sensoryFeedback(.impact(weight: .light),  trigger: spacedRepetitionRating)
+            .sensoryFeedback(.impact(weight: .heavy),  trigger: answer)
             
             VStack {
                 Text("Congrats!")
@@ -370,6 +435,10 @@ struct CardView: View {
     @Binding var question: String
     @Binding var answer: String
     
+    // For dealing with swipe gestures
+    var onRevealAnswer: (() -> Void)? = nil
+    var onNextClue: (() -> Void)? = nil
+    
     var body: some View {
         VStack {
             
@@ -385,6 +454,17 @@ struct CardView: View {
                 RoundedRectangle(cornerRadius: 10)
                     .fill(Color.blue.opacity(0.3).gradient)
             )
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 40)
+                    .onEnded { value in // Origin at top left, positive y goes down
+                        let isRightSwipe = value.translation.width > 40 &&
+                        abs(value.translation.width) >
+                        abs(value.translation.height)
+                        if isRightSwipe && sequentialClues {
+                            onNextClue?()
+                        }
+                    }
+            )
                 
             Text(answer)
                 .padding()
@@ -393,6 +473,10 @@ struct CardView: View {
                         .fill(Color.green.opacity(0.3).gradient)
                 )
                 .opacity(answerRevealed ? 1 : 0)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onRevealAnswer?()
         }
     }
 }

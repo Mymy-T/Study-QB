@@ -185,8 +185,8 @@ struct PracticeSetupView: View {
                         } else {
                             // MARK: Automatic
                             VStack {
-                                Text("The cards to review will be automatically designated by the **spaced reptition** algorithm.")
-                                Text("Unfortunately, single clue mode isn't avaliable for this setting.")
+                                Text("The cards to review will be automatically designated by the **spaced repetition** algorithm.")
+                                Text("Unfortunately, single clue mode isn't available for this setting.")
                                     .font(.caption)
                                     .padding()
                                 Text("**\(numScheduledCards)** cards to review today.")
