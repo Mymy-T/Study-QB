@@ -13,6 +13,7 @@ struct SettingsView: View {
     @Query var cards: [Card]
     
     @State private var showDeleteAllAlert = false
+    @State private var showClearCacheAlert = false
     
     var body: some View {
         NavigationStack {
@@ -20,12 +21,25 @@ struct SettingsView: View {
                 Section("Notifications") {
                     Text("Todo")
                 }
-                Section("Delete All Cards") {
+                Section("Delete") {
+                        
+                    Button {
+                        showClearCacheAlert = true
+                    } label: {
+                        Label("Delete Cached Tossup Data", systemImage: "trash")
+                            .foregroundStyle(.red)
+                    }
+                    .buttonStyle(.borderless)
+                    
+                    
                     Button {
                         showDeleteAllAlert = true
                     } label: {
-                        Image(systemName: "trash")
-                    }.tint(.red)
+                        Label("DELETE ALL CARDS", systemImage: "trash")
+                            .foregroundStyle(.red)
+                    }
+                    .buttonStyle(.borderless)
+                    
                 }
             }.navigationTitle("Settings")
                 .alert("ARE YOU SURE?", isPresented: $showDeleteAllAlert) {
@@ -37,6 +51,14 @@ struct SettingsView: View {
                     }
                 } message: {
                     Text("Are you sure you want to delete ALL of your cards? This action is irreversible.")
+                }
+                .alert("Delete cached tossup data?", isPresented: $showClearCacheAlert) {
+                    Button("Cancel", role: .cancel) { }
+                    Button("Clear", role: .destructive) {
+                        for card in cards {
+                            card.cachedTossup = nil
+                        }
+                    }
                 }
         }
     }

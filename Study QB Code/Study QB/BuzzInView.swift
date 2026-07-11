@@ -21,27 +21,46 @@ struct BuzzInView: View {
     @State private var currentIndex = 0
     @State private var words: [String] = []
     @State private var revealedCount = 0
- //   @State private var wordTimerProgress: Double = 0.0
     @State private var tickCount = 0
     @State private var buzzed = false
     @State private var gotIt: Bool? = nil
     @State private var generatingTossup = false
     @State private var generationError = false
     @State private var sessionComplete = false
+    @State private var buzzAnswer = ""
+    @State private var buzzCountdownTicks = 0
+    @State private var countdownFinished = false
+    @FocusState private var answerFieldFocused: Bool
     
     var questionProgressPercent: Double {
         return Double(revealedCount) / Double(words.count)
     }
 
+    var countdownSecondsRemaining: Int {
+        max(0, Int(ceil(BuzzInView.countdownDuration - Double(buzzCountdownTicks) * BuzzInView.tickLength)))
+    }
+
+    var countdownProgress: Double {
+        min(1.0, Double(buzzCountdownTicks) * BuzzInView.tickLength / BuzzInView.countdownDuration)
+    }
+
+    var suggestedGotIt: Bool? {
+        guard countdownFinished else { return nil }
+        let typed = buzzAnswer.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !typed.isEmpty else { return false }
+        return fuzzyMatch(typed: typed, correct: reviewCards[currentIndex].answer)
+    }
+
     static let tickLength = 0.05 // This is how many seconds per tick
-    let desiredWPM = 300
+    static let countdownDuration = 5.0
+    let desiredWPM = 300 // TODO: Make customizable
     var timePerWord: Double {
         return 60.0/Double(desiredWPM) // In seconds
     }
     let progressTimer = Timer.publish(every: tickLength, on: .main, in: .common).autoconnect()
 
     let groqApiKey = Bundle.main.infoDictionary!["GroqApiKey"] as! String
-    let tossupModel = "llama-3.1-8b-instant" // Model different from Analyze tab models to prevent reaching usage limit
+    let tossupModel = "openai/gpt-oss-safeguard-20b"
 
     var markedForReview: Bool {
         reviewCards[currentIndex].markedForReview
@@ -85,7 +104,7 @@ struct BuzzInView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding()
                             } else {
-                                Text(words.prefix(revealedCount).joined(separator: " "))
+                                Text((buzzed && countdownFinished ? words : Array(words.prefix(revealedCount))).joined(separator: " ")) // added
                                     .font(.body)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding()
@@ -108,23 +127,54 @@ struct BuzzInView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    // MARK: Per-word timer bar
-                    if !generatingTossup && !buzzed {
-                        GeometryReader { barGeometry in
-                            ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color.gray.opacity(0.25))
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color.blue.opacity(0.6))
-                                    .frame(width: barGeometry.size.width * questionProgressPercent)
-                                    .animation(.linear(duration: 0.05), value: questionProgressPercent)
+                    // MARK: Countdown bar
+                    if !generatingTossup {
+                        if !buzzed {
+                            GeometryReader { barGeometry in
+                                ZStack(alignment: .leading) {
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(Color.gray.opacity(0.25))
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(Color.blue.opacity(0.6))
+                                        .frame(width: barGeometry.size.width * questionProgressPercent)
+                                        .animation(.linear(duration: 0.05), value: questionProgressPercent)
+                                }
                             }
+                            .frame(width: geometry.size.width * 0.85, height: 8)
+                        } else if !countdownFinished {
+                            VStack(spacing: 4) {
+                                Text("\(countdownSecondsRemaining)")
+                                    .font(.title2).bold()
+                                    .foregroundStyle(countdownSecondsRemaining <= 2 ? .red : .primary)
+                                    .contentTransition(.numericText())
+                                GeometryReader { barGeometry in
+                                    ZStack(alignment: .leading) {
+                                        RoundedRectangle(cornerRadius: 4).fill(Color.gray.opacity(0.25))
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .fill(countdownSecondsRemaining <= 2 ? Color.red.opacity(0.7) : Color.orange.opacity(0.6))
+                                            .frame(width: barGeometry.size.width * countdownProgress)
+                                            .animation(.linear(duration: BuzzInView.tickLength), value: countdownProgress)
+                                    }
+                                }
+                                .frame(height: 8)
+                            }
+                            .frame(width: geometry.size.width * 0.85)
                         }
-                        .frame(width: geometry.size.width * 0.85, height: 8)
+                    }
+
+                    // MARK: Answer input
+                    if buzzed {
+                        TextField("Type your answer...", text: $buzzAnswer)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($answerFieldFocused)
+                            .disabled(countdownFinished)
+                            .submitLabel(.done) // added
+                            .onSubmit { answerFieldFocused = false }
+                            .frame(width: geometry.size.width * 0.75)
                     }
 
                     // MARK: Answer reveal
-                    if buzzed {
+                    if buzzed && countdownFinished {
                         Text(reviewCards[currentIndex].answer)
                             .font(.title2).bold()
                             .padding()
@@ -141,6 +191,10 @@ struct BuzzInView: View {
                     } else if !buzzed {
                         Button("BUZZ!") {
                             withAnimation { buzzed = true }
+                            buzzCountdownTicks = 0
+                            countdownFinished = false
+                            buzzAnswer = ""
+                            answerFieldFocused = true
                         }
                         .font(.title).bold()
                         .foregroundStyle(.white)
@@ -156,7 +210,6 @@ struct BuzzInView: View {
                         HStack(spacing: 12) {
                             Button("Got it ✓") {
                                 gotIt = true
-                                revealedCount = words.count
                                 if spacedRepetition {
                                     scheduleReview(card: reviewCards[currentIndex], rating: .good)
                                 }
@@ -168,10 +221,13 @@ struct BuzzInView: View {
                                 RoundedRectangle(cornerRadius: 10)
                                     .fill(Color.green.gradient)
                             )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.blue, lineWidth: suggestedGotIt == true ? 4 : 0)
+                            )
 
                             Button("Didn't get it") {
                                 gotIt = false
-                                revealedCount = words.count
                                 if spacedRepetition {
                                     scheduleReview(card: reviewCards[currentIndex], rating: .again)
                                 }
@@ -182,6 +238,10 @@ struct BuzzInView: View {
                             .background(
                                 RoundedRectangle(cornerRadius: 10)
                                     .fill(Color.red.gradient)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.blue, lineWidth: suggestedGotIt == false ? 4 : 0)
                             )
                         }
                     } else {
@@ -240,23 +300,19 @@ struct BuzzInView: View {
             await loadCurrentCard()
         }
         .onReceive(progressTimer) { _ in
-            guard !buzzed, !generatingTossup, !words.isEmpty else { return }
-            guard revealedCount < words.count else {
-//                wordTimerProgress = 1.0
-                return
+            if buzzed && !countdownFinished {
+                buzzCountdownTicks += 1
+                if Double(buzzCountdownTicks) * BuzzInView.tickLength >= BuzzInView.countdownDuration {
+                    countdownFinished = true
+                    answerFieldFocused = false
+                }
+            } else if !buzzed, !generatingTossup, !words.isEmpty, revealedCount < words.count {
+                tickCount += 1
+                if Double(tickCount) * BuzzInView.tickLength >= timePerWord {
+                    revealedCount += 1
+                    tickCount = 0
+                }
             }
-            tickCount += 1
-            if Double(tickCount) * BuzzInView.tickLength >= timePerWord {
-                revealedCount += 1
-                tickCount = 0
-            }
-//            wordTimerProgress = min(1.0, wordTimerProgress + 0.05 / 0.4)
-//            if wordTimerProgress >= 1.0 {
-//                wordTimerProgress = 0.0
-//                withAnimation(.easeIn(duration: 0.1)) {
-//                    revealedCount += 1
-//                }
-//            }
         }
     }
 
@@ -265,10 +321,12 @@ struct BuzzInView: View {
         buzzed = false
         gotIt = nil
         revealedCount = 0
-//        wordTimerProgress = 0.0
         tickCount = 0
         generationError = false
         words = []
+        buzzAnswer = ""
+        buzzCountdownTicks = 0
+        countdownFinished = false
         let card = reviewCards[currentIndex]
 
         if let cached = card.cachedTossup {
@@ -337,21 +395,19 @@ struct BuzzInView: View {
             .reversed()
         let clueList = clues.map { "• \($0)" }.joined(separator: "\n")
         return """
-        You are stitching bullet-point clues into a quizbowl tossup paragraph.
-        Subject category: \(card.category.rawValue)
-        Answer: \(card.answer) (YOU MUST NOT MENTION THE ANSWER ANYWHERE IN YOUR RESPONSE!)
+        You are stitching bullet-point clues into a quizbowl tossup paragraph. The subject category is \(card.category.rawValue). The intended answer is \(card.answer). YOU MUST NOT MENTION THE ANSWER ANYWHERE IN YOUR RESPONSE!
 
-        Clues (ordered hard to easy):
+        The clues are as follows (ordered hard to easy):
         \(clueList)
 
-        Write a single flowing paragraph that:
-        - Uses "This [subject type]" at the start of each sentence (infer the subject type from the category, e.g. "This composer", "This battle", "This novel", "This philosopher", "This country")
+        Based on the clues, write a single flowing paragraph that:
+        - Uses "This [answer_type]" at the start of each sentence (infer the subject type from the answer e.g. "This composer", "This battle", "This novel", "This philosopher", "This country")
         - Incorporates each clue as natural prose WITHOUT changing the meaning
         - Orders sentences from most obscure to most commonly known
         - Does NOT state or hint at the answer
         - Contains no bullet points, numbered lists, or markdown
         - The number of sentences should be about the same as the number of clues. Do not add additional details
-        - The final sentence should begin with the phrase "For 10 points"
+        - The final sentence/clue should begin with the phrase "For 10 points, name this [answer_type] ... [rest of clue]"
         Output only the paragraph, nothing else.
         """
     }
@@ -380,6 +436,40 @@ struct BuzzInView: View {
         return clues
             .map { "\(prefix) \($0.trimmingCharacters(in: .whitespaces))." }
             .joined(separator: " ")
+    }
+
+    // MARK: Fuzzy match helpers
+    private func fuzzyMatch(typed: String, correct: String) -> Bool {
+        let t = normalize(typed)
+        let c = normalize(correct)
+        guard !t.isEmpty else { return false }
+        if c.contains(t) || t.contains(c) { return true }
+        let dist = levenshtein(t, c)
+        return dist <= max(1, c.count / 4)
+    }
+
+    private func normalize(_ s: String) -> String {
+        var r = s.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        for article in ["the ", "a ", "an "] {
+            if r.hasPrefix(article) { r = String(r.dropFirst(article.count)) }
+        }
+        r = r.filter { $0.isLetter || $0.isNumber || $0.isWhitespace }
+        return r.trimmingCharacters(in: .whitespaces)
+    }
+
+    private func levenshtein(_ a: String, _ b: String) -> Int {
+        let a = Array(a), b = Array(b)
+        if a.isEmpty { return b.count }
+        if b.isEmpty { return a.count }
+        var dp = Array(0...b.count)
+        for i in 1...a.count {
+            let prev = dp
+            dp[0] = i
+            for j in 1...b.count {
+                dp[j] = a[i-1] == b[j-1] ? prev[j-1] : 1 + min(prev[j-1], prev[j], dp[j-1])
+            }
+        }
+        return dp[b.count]
     }
 
 }
