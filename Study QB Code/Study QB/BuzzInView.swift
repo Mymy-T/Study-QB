@@ -129,7 +129,7 @@ struct BuzzInView: View {
 
                     // MARK: Countdown bar
                     if !generatingTossup {
-                        if !buzzed {
+                        if !buzzed && revealedCount < words.count {
                             GeometryReader { barGeometry in
                                 ZStack(alignment: .leading) {
                                     RoundedRectangle(cornerRadius: 4)
@@ -169,12 +169,12 @@ struct BuzzInView: View {
                             .focused($answerFieldFocused)
                             .disabled(countdownFinished)
                             .submitLabel(.done) // added
-                            .onSubmit { answerFieldFocused = false }
+                            .onSubmit { countdownFinished = true; answerFieldFocused = false }
                             .frame(width: geometry.size.width * 0.75)
                     }
 
                     // MARK: Answer reveal
-                    if buzzed && countdownFinished {
+                    if countdownFinished {
                         Text(reviewCards[currentIndex].answer)
                             .font(.title2).bold()
                             .padding()
@@ -188,7 +188,70 @@ struct BuzzInView: View {
                     // MARK: Action buttons
                     if generatingTossup {
                         // No button while generating
-                    } else if !buzzed {
+                    } else if countdownFinished {
+                        if gotIt == nil {
+                            HStack(spacing: 12) {
+                                Button("Got it ✓") {
+                                    gotIt = true
+                                    if spacedRepetition {
+                                        scheduleReview(card: reviewCards[currentIndex], rating: .good)
+                                    }
+                                }
+                                .foregroundStyle(.white)
+                                .bold()
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.green.gradient)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(Color.blue, lineWidth: suggestedGotIt == true ? 4 : 0)
+                                )
+
+                                Button("Didn't get it") {
+                                    gotIt = false
+                                    if spacedRepetition {
+                                        scheduleReview(card: reviewCards[currentIndex], rating: .again)
+                                    }
+                                }
+                                .foregroundStyle(.white)
+                                .bold()
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.red.gradient)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(Color.blue, lineWidth: suggestedGotIt == false ? 4 : 0)
+                                )
+                            }
+                        } else {
+                            Button("Next Card") {
+                                advanceCard()
+                            }
+                            .foregroundStyle(.white)
+                            .bold()
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.blue.gradient)
+                            )
+                        }
+                    } else if buzzed {
+                        Button("Submit") {
+                            countdownFinished = true
+                            answerFieldFocused = false
+                        }
+                        .foregroundStyle(.white)
+                        .bold()
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.blue.gradient)
+                        )
+                    } else {
                         Button("BUZZ!") {
                             withAnimation { buzzed = true }
                             buzzCountdownTicks = 0
@@ -206,55 +269,6 @@ struct BuzzInView: View {
                         )
                         .disabled(revealedCount == 0)
                         .opacity(revealedCount == 0 ? 0.4 : 1)
-                    } else if gotIt == nil {
-                        HStack(spacing: 12) {
-                            Button("Got it ✓") {
-                                gotIt = true
-                                if spacedRepetition {
-                                    scheduleReview(card: reviewCards[currentIndex], rating: .good)
-                                }
-                            }
-                            .foregroundStyle(.white)
-                            .bold()
-                            .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.green.gradient)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color.blue, lineWidth: suggestedGotIt == true ? 4 : 0)
-                            )
-
-                            Button("Didn't get it") {
-                                gotIt = false
-                                if spacedRepetition {
-                                    scheduleReview(card: reviewCards[currentIndex], rating: .again)
-                                }
-                            }
-                            .foregroundStyle(.white)
-                            .bold()
-                            .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.red.gradient)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color.blue, lineWidth: suggestedGotIt == false ? 4 : 0)
-                            )
-                        }
-                    } else {
-                        Button("Next Card") {
-                            advanceCard()
-                        }
-                        .foregroundStyle(.white)
-                        .bold()
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color.blue.gradient)
-                        )
                     }
 
                     Spacer()
@@ -300,13 +314,14 @@ struct BuzzInView: View {
             await loadCurrentCard()
         }
         .onReceive(progressTimer) { _ in
-            if buzzed && !countdownFinished {
+            guard !generatingTossup, !words.isEmpty else { return }
+            if !countdownFinished, buzzed || revealedCount == words.count {
                 buzzCountdownTicks += 1
                 if Double(buzzCountdownTicks) * BuzzInView.tickLength >= BuzzInView.countdownDuration {
                     countdownFinished = true
                     answerFieldFocused = false
                 }
-            } else if !buzzed, !generatingTossup, !words.isEmpty, revealedCount < words.count {
+            } else if !buzzed, revealedCount < words.count {
                 tickCount += 1
                 if Double(tickCount) * BuzzInView.tickLength >= timePerWord {
                     revealedCount += 1
@@ -438,7 +453,7 @@ struct BuzzInView: View {
             .joined(separator: " ")
     }
 
-    // MARK: Fuzzy match helpers
+    // MARK: Fuzzy match funcs
     private func fuzzyMatch(typed: String, correct: String) -> Bool {
         let t = normalize(typed)
         let c = normalize(correct)
