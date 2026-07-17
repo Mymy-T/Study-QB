@@ -12,10 +12,6 @@ enum Tabs: Hashable {
 }
 
 
-// TODO: Add widgets/notifications to remind user to study a few cards for a short duration
-// TODO: Add button to view card details when practicing
-
-
 struct ContentView: View {
     
     @State private var selectedTab: Tabs = .analyze

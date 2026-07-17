@@ -24,7 +24,6 @@ struct ManageCardGrid: View {
     let searchText: String
     let categories: [Category]
     let onlyShowMarked: Bool
-//    let sortParameter: SortParameter
     
     var dateStrings: [String] {
         var strings: [String] = []

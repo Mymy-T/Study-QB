@@ -104,7 +104,7 @@ struct BuzzInView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding()
                             } else {
-                                Text((buzzed && countdownFinished ? words : Array(words.prefix(revealedCount))).joined(separator: " ")) // added
+                                Text((buzzed && countdownFinished ? words : Array(words.prefix(revealedCount))).joined(separator: " "))
                                     .font(.body)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding()
@@ -168,7 +168,7 @@ struct BuzzInView: View {
                             .textFieldStyle(.roundedBorder)
                             .focused($answerFieldFocused)
                             .disabled(countdownFinished)
-                            .submitLabel(.done) // added
+                            .submitLabel(.done)
                             .onSubmit { countdownFinished = true; answerFieldFocused = false }
                             .frame(width: geometry.size.width * 0.75)
                     }

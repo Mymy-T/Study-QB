@@ -23,6 +23,7 @@ struct Study_QBApp: App {
     }
     
     init() {
+        NotificationManager.shared.configure()
         do {
             container = try ModelContainer(
                 for: Card.self,

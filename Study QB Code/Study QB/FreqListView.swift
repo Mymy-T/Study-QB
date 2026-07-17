@@ -17,14 +17,6 @@ struct FreqListView: View {
     
     var body: some View {
         VStack {
-//            HStack {
-//                Spacer()
-//                Button {
-//                    dismiss()
-//                } label: {
-//                    Image(systemName: "xmark")
-//                }.tint(.red)
-//            }
             HStack {
                 Text("**Answer**")
                 Spacer()

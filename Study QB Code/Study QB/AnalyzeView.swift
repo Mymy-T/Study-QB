@@ -34,7 +34,6 @@ struct AnalyzeView: View {
     @State private var answerQuery = ""
     @FocusState var queryKeyboard: Bool
     @State private var difficulties: Set<Int> = [2, 3, 4, 5]
-//    @State private var difficulty: Difficulty = .hs
     @State private var categories: [Category] = [] // [] matches all categories
     @State private var responseText = AttributedString()
     @State private var prompt = ""

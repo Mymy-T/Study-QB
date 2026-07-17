@@ -35,7 +35,6 @@ struct CardEditorView: View {
     @State private var dateReviewed = Date.now
     @State private var answer = ""
     @State private var details = NSAttributedString()
-//    @State private var attributedTextSelection = AttributedTextSelection()
     @State private var category: Category = .lit
     @State private var personalNotes = ""
     @State private var markedForReview = false
