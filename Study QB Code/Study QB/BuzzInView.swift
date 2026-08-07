@@ -356,7 +356,7 @@ struct BuzzInView: View {
             let groqClient = GroqClient(apiKey: groqApiKey)
             let request = ChatCompletionRequest(
                 model: tossupModel,
-                messages: [Message(role: .user, content: buildTossupPrompt(for: card))],
+                messages: [Message(role: .user, content: try await buildTossupPrompt(for: card))],
                 stream: false
             )
             let response = try await groqClient.createChatCompletion(request)
@@ -402,26 +402,156 @@ struct BuzzInView: View {
     }
 
     // MARK: buildTossupPrompt
-    private func buildTossupPrompt(for card: Card) -> String {
+    private func buildTossupPrompt(for card: Card) async throws -> String {
         let clues = card.personalNotes
             .split(whereSeparator: \.isNewline)
             .map(String.init)
             .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
             .reversed()
         let clueList = clues.map { "• \($0)" }.joined(separator: "\n")
+        
+        // Get the subject type
+        let subjectPrompt = """
+            You are classifying quizbowl answers.
+
+            Given an answer, determine the most appropriate subject type for referring to that answer in a quizbowl tossup.
+
+            Choose EXACTLY ONE subject type from the following list:
+
+            person
+            author
+            poet
+            playwright
+            philosopher
+            psychologist
+            scientist
+            physicist
+            chemist
+            biologist
+            mathematician
+            astronomer
+            economist
+            composer
+            musician
+            artist
+            architect
+            politician
+            monarch
+            religious figure
+            mythological figure
+
+            novel
+            short story
+            play
+            poem
+            epic poem
+            essay
+            speech
+            book
+            literary work
+            character
+
+            painting
+            sculpture
+            building
+            architectural style
+            opera
+            ballet
+            symphony
+            concerto
+            song
+            musical work
+
+            battle
+            war
+            treaty
+            rebellion
+            revolution
+            historical event
+            empire
+            dynasty
+            civilization
+
+            country
+            city
+            river
+            mountain
+            island
+            sea
+            ocean
+            desert
+            continent
+            region
+
+            planet
+            moon
+            star
+            galaxy
+            constellation
+            chemical element
+            compound
+            particle
+            organism
+            species
+            disease
+            anatomical structure
+
+            theory
+            law
+            principle
+            equation
+            phenomenon
+            theorem
+            proof
+            algorithm
+            function
+
+            religion
+            religious text
+            school of thought
+            concept
+            organization
+            company
+            language
+            film
+            television series
+            artifact
+            document
+            award
+            festival
+
+            Guidelines:
+            - Choose the most natural subject type for beginning every sentence of a tossup (e.g. "This novel...", "This composer...", "This battle...").
+            - Prefer commonly used categories over overly specific ones
+            - If multiple types could apply, choose the one that would sound most natural repeated throughout a quizbowl tossup
+            - Do not invent new subject types, unless you are very confident that the subject is not described by any word in the list
+
+            The answer is: \(card.answer)
+            The category is: \(card.categoryString)
+        """
+        let groqClient = GroqClient(apiKey: groqApiKey)
+        let request = ChatCompletionRequest(
+            model: tossupModel,
+            messages: [Message(role: .user, content: subjectPrompt)],
+            stream: false
+        )
+        let response = try await groqClient.createChatCompletion(request)
+        let subjectType = response.choices[0].message.content.trimmingCharacters(in: .whitespacesAndNewlines)
+        print(subjectType)
+        
         return """
-        You are stitching bullet-point clues into a quizbowl tossup paragraph. The subject category is \(card.category.rawValue). The intended answer is \(card.answer). YOU MUST NOT MENTION THE ANSWER ANYWHERE IN YOUR RESPONSE!
+        You are stitching bullet-point clues into a quizbowl tossup paragraph. The subject category is \(card.category.rawValue). The intended answer is \(card.answer). The subject type is \(subjectType). YOU MUST NOT MENTION THE ANSWER ANYWHERE IN YOUR RESPONSE!
 
         The clues are as follows (ordered hard to easy):
         \(clueList)
 
         Based on the clues, write a single flowing paragraph that:
-        - Uses "This [answer_type]" at the start of each sentence (infer the subject type from the answer e.g. "This composer", "This battle", "This novel", "This philosopher", "This country")
-        - Incorporates each clue as natural prose WITHOUT changing the meaning
-        - Orders sentences from most obscure to most commonly known
+        - Uses "This [subject type]" at the start of each sentence
+        - Incorporates each clue as natural prose WITHOUT changing the meaning; If a clue is phrased about another entity (such as an author, composer, discoverer, character, or location), rewrite it so it becomes a fact about the answer while preserving its meaning.
+        - Uses every clue exactly once, in order from hardest to easiest and does not add, remove, or alter factual information.
         - Does NOT state or hint at the answer
+        - Produces approximately one sentence per clue without any additional details
         - Contains no bullet points, numbered lists, or markdown
-        - The number of sentences should be about the same as the number of clues. Do not add additional details
         - The final sentence/clue should begin with the phrase "For 10 points, name this [answer_type] ... [rest of clue]"
         Output only the paragraph, nothing else.
         """
