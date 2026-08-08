@@ -14,13 +14,13 @@ struct FreqListView: View {
     @Binding var awaitingFreqList: Bool
     let geometry: GeometryProxy
     let freqListItems: [FreqListItem]
-    let existingAnswers: Set<String>
+    let cards: [Card]
 
     @State private var hideExisting = true
 
     var displayedItems: [FreqListItem] {
         guard hideExisting else { return freqListItems }
-        return freqListItems.filter { !existingAnswers.contains($0.answer.lowercased()) }
+        return freqListItems.filter { !cardExists(forAnswer: $0.answer, in: cards) }
     }
 
     var body: some View {

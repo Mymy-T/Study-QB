@@ -31,10 +31,6 @@ struct AnalyzeView: View {
     @Environment(\.modelContext) var modelContext
     @Query var cards: [Card]
 
-    var existingAnswers: Set<String> {
-        Set(cards.map { $0.answer.lowercased() })
-    }
-
 
     @State private var answerQuery = ""
     @FocusState var queryKeyboard: Bool
@@ -103,11 +99,16 @@ struct AnalyzeView: View {
                             await suggestTerm()
                         }
                     } label: {
-                        if awaitingSuggestion {
-                            ProgressView()
-                        } else {
-                            Image(systemName: "sparkles")
+                        Group {
+                            if awaitingSuggestion {
+                                ProgressView()
+                            } else {
+                                Image(systemName: "sparkles")
+                            }
                         }
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(Color.blue.gradient))
                     }
                     .disabled(awaitingSuggestion)
                     .alert("No Suggestions Found", isPresented: $showNoSuggestionAlert) {
@@ -236,7 +237,7 @@ struct AnalyzeView: View {
                 }
                 .sheet(isPresented: $showingFreqList) {
                     GeometryReader { geometry in
-                        FreqListView(awaitingFreqList: $awaitingFreqList, geometry: geometry, freqListItems: freqListItems, existingAnswers: existingAnswers)
+                        FreqListView(awaitingFreqList: $awaitingFreqList, geometry: geometry, freqListItems: freqListItems, cards: cards)
                     }
                 }
             
@@ -291,11 +292,10 @@ struct AnalyzeView: View {
         awaitingSuggestion = true
 
         let candidateCategories = (categories.isEmpty ? Category.allCases : categories).shuffled()
-        let existing = existingAnswers
 
         for category in candidateCategories {
             let items = await fetchFrequencyList(category: category, difficulties: difficulties)
-            if let suggestion = items.first(where: { !existing.contains($0.answer.lowercased()) }) {
+            if let suggestion = items.first(where: { !cardExists(forAnswer: $0.answer, in: cards) }) {
                 answerQuery = suggestion.answer
                 awaitingSuggestion = false
                 return

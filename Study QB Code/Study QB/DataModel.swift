@@ -48,6 +48,22 @@ struct FrequencyList: Codable {
     var frequencyList: [FreqListItem]
 }
 
+// MARK: cardExists
+func cardExists(forAnswer answer: String, in cards: [Card]) -> Bool {
+    let trimmed = answer.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard trimmed.count >= 3 else {
+        return cards.contains { $0.answer.caseInsensitiveCompare(trimmed) == .orderedSame }
+    }
+    return cards.contains { card in
+        let cardAnswer = card.answer.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard cardAnswer.count >= 3 else {
+            return cardAnswer.caseInsensitiveCompare(trimmed) == .orderedSame
+        }
+        return trimmed.localizedCaseInsensitiveContains(cardAnswer)
+            || cardAnswer.localizedCaseInsensitiveContains(trimmed)
+    }
+}
+
 let colors: [Color] = [.red, .orange, .yellow, .green, .teal, .blue, .indigo, .purple, .pink, .brown]
 
 protocol CardLike {
