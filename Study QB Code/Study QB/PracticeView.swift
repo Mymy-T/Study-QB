@@ -239,7 +239,7 @@ struct PracticeView: View {
                         Button {
                             answerRevealed = false
                             if spacedRepetition {
-                                scheduleReview(card: currentCard as! Card, rating: spacedRepetitionRating!)
+                                scheduleReview(card: currentCard as! Card, rating: spacedRepetitionRating!, modelContext: modelContext)
                                 withAnimation(.easeInOut(duration: 0.2)) {
                                     (currentCard, finishedReviewing) = getNextCard(current: currentCard, singleClueMode: singleClue)
                                 }
@@ -397,33 +397,6 @@ struct PracticeView: View {
             }
         }
     }
-    
-    // MARK: scheduleReview
-    private func scheduleReview(card: Card, rating: Rating) {
-        // Returns a tuple of (oldCard, newCard) where newCard has an fsrsCard with the new scheduled review date and other properties
-        let scheduler = LongTermScheduler()
-        
-        let review = scheduler.schedule(
-            card: card.fsrsCard!,
-            algorithm: .v5,
-            reviewRating: rating, // or .easy, .hard, .again
-            reviewTime: Date()
-        )
-        
-//        let newCard = Card(dateReviewed: card.dateReviewed, answer: card.answer, details: card.details, category: card.category, personalNotes: card.personalNotes, rgba: card.rgba, markedForReview: card.markedForReview, fsrsCard: review.postReviewCard)
-        
-//        spacedRepetitionOld = card.fsrsCard
-        
-        card.fsrsCard = review.postReviewCard
-        
-        do {
-            try modelContext.save()
-        } catch {
-            print("Error in saving scheduled card")
-        }
-        
-    }
-    
     
 }
 

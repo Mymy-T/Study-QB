@@ -26,7 +26,7 @@ struct Study_QBApp: App {
         NotificationManager.shared.configure()
         do {
             container = try ModelContainer(
-                for: Card.self,
+                for: Card.self, BuzzGameStat.self, CardStat.self,
                 migrationPlan: CardMigrationPlan.self
             )
         } catch {

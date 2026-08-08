@@ -8,7 +8,7 @@
 import SwiftUI
 
 enum Tabs: Hashable {
-    case analyze, manage, review, settings
+    case analyze, manage, review, stats, settings
 }
 
 
@@ -32,6 +32,9 @@ struct ContentView: View {
             Tab("Review", systemImage: "timer", value: .review) {
                 PracticeSetupView()
                     .id(reviewId)
+            }
+            Tab("Stats", systemImage: "chart.bar", value: .stats) {
+                StatisticsView()
             }
             Tab("Settings", systemImage: "gear", value: .settings) {
                 SettingsView()

@@ -27,6 +27,9 @@ struct BuzzInView: View {
     @State private var generatingTossup = false
     @State private var generationError = false
     @State private var sessionComplete = false
+    @State private var sessionPoints = 0
+    @State private var numberCorrect = 0
+    @State private var numberIncorrect = 0
     @State private var buzzAnswer = ""
     @State private var buzzCountdownTicks = 0
     @State private var countdownFinished = false
@@ -74,6 +77,10 @@ struct BuzzInView: View {
                     // MARK: Header
                     HStack {
                         Text("Card \(currentIndex + 1) of \(reviewCards.count)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text("\(sessionPoints) pts")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         Spacer()
@@ -193,8 +200,11 @@ struct BuzzInView: View {
                             HStack(spacing: 12) {
                                 Button("Got it ✓") {
                                     gotIt = true
+                                    sessionPoints += 10
+                                    numberCorrect += 1
+                                    recordCardAttempt(correct: true)
                                     if spacedRepetition {
-                                        scheduleReview(card: reviewCards[currentIndex], rating: .good)
+                                        scheduleReview(card: reviewCards[currentIndex], rating: .good, modelContext: modelContext)
                                     }
                                 }
                                 .foregroundStyle(.white)
@@ -211,8 +221,12 @@ struct BuzzInView: View {
 
                                 Button("Didn't get it") {
                                     gotIt = false
+                                    numberIncorrect += 1
+                                    let interrupted = revealedCount < words.count
+                                    sessionPoints += interrupted ? -5 : 0
+                                    recordCardAttempt(correct: false)
                                     if spacedRepetition {
-                                        scheduleReview(card: reviewCards[currentIndex], rating: .again)
+                                        scheduleReview(card: reviewCards[currentIndex], rating: .again, modelContext: modelContext)
                                     }
                                 }
                                 .foregroundStyle(.white)
@@ -284,16 +298,40 @@ struct BuzzInView: View {
                         Text("Session Complete!")
                             .font(.largeTitle).bold()
                         Text("You reviewed \(reviewCards.count) card\(reviewCards.count == 1 ? "" : "s").")
-                        Button("Done") {
-                            dismiss()
+                        Text("\(sessionPoints) points — \(numberCorrect) correct, \(numberIncorrect) incorrect")
+                            .foregroundStyle(.secondary)
+                        Text("Save these session stats?")
+                            .font(.subheadline)
+                        HStack(spacing: 12) {
+                            Button("Discard") {
+                                dismiss()
+                            }
+                            .foregroundStyle(.white)
+                            .bold()
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.gray.gradient)
+                            )
+
+                            Button("Save") {
+                                let stat = BuzzGameStat(points: sessionPoints, numberCorrect: numberCorrect, numberIncorrect: numberIncorrect)
+                                modelContext.insert(stat)
+                                do {
+                                    try modelContext.save()
+                                } catch {
+                                    print("Error saving BuzzGameStat")
+                                }
+                                dismiss()
+                            }
+                            .foregroundStyle(.white)
+                            .bold()
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.green.gradient)
+                            )
                         }
-                        .foregroundStyle(.white)
-                        .bold()
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color.green.gradient)
-                        )
                     }
                     .position(x: geometry.size.width * 0.5, y: geometry.size.height * 0.5)
                 }
@@ -384,20 +422,23 @@ struct BuzzInView: View {
         }
     }
 
-    // MARK: scheduleReview
-    private func scheduleReview(card: Card, rating: Rating) {
-        let scheduler = LongTermScheduler()
-        let review = scheduler.schedule(
-            card: card.fsrsCard!,
-            algorithm: .v5,
-            reviewRating: rating,
-            reviewTime: Date()
-        )
-        card.fsrsCard = review.postReviewCard
+    // MARK: recordCardAttempt
+    private func recordCardAttempt(correct: Bool) {
+        let card = reviewCards[currentIndex]
+        let buzzPositionPercent = words.isEmpty ? 100.0 : Double(revealedCount) / Double(words.count) * 100.0
+        let allStats = (try? modelContext.fetch(FetchDescriptor<CardStat>())) ?? []
+        let stat = allStats.first { $0.answer == card.answer && $0.category == card.category } ?? {
+            let new = CardStat(answer: card.answer, category: card.category)
+            modelContext.insert(new)
+            return new
+        }()
+        stat.timesSeen += 1
+        if correct { stat.timesCorrect += 1 }
+        stat.totalBuzzPositionPercent += buzzPositionPercent
         do {
             try modelContext.save()
         } catch {
-            print("Error saving FSRS review card from BuzzInView")
+            print("Error saving CardStat")
         }
     }
 
