@@ -29,8 +29,13 @@ struct AnalyzeView: View {
     
     
     @Environment(\.modelContext) var modelContext
-    
-    
+    @Query var cards: [Card]
+
+    var existingAnswers: Set<String> {
+        Set(cards.map { $0.answer.lowercased() })
+    }
+
+
     @State private var answerQuery = ""
     @FocusState var queryKeyboard: Bool
     @State private var difficulties: Set<Int> = [2, 3, 4, 5]
@@ -42,7 +47,10 @@ struct AnalyzeView: View {
     @State private var numQuestions = 0
     
     @State private var showEmptyQueryAlert = false
-    
+
+    @State private var awaitingSuggestion = false
+    @State private var showNoSuggestionAlert = false
+
     @State private var analyzeHelpPresented = false
     
     @State private var showingFreqList = false
@@ -69,26 +77,46 @@ struct AnalyzeView: View {
                     DifficultySelectionMenu(difficulties: $difficulties)
                 }.padding()
                 
-                TextField("", text: $answerQuery, prompt: Text("Enter query"))
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(.gray.opacity(0.2))
-                    )
-                    .padding(.horizontal)
-                    .onSubmit {
-                        
-                        guard answerQuery != "" else {
-                            showEmptyQueryAlert = true
-                            return
+                HStack {
+                    TextField("", text: $answerQuery, prompt: Text("Enter query"))
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(.gray.opacity(0.2))
+                        )
+                        .onSubmit {
+
+                            guard answerQuery != "" else {
+                                showEmptyQueryAlert = true
+                                return
+                            }
+
+                            Task {
+                                await getLLMResponse()
+                            }
+
                         }
-                        
+                        .focused($queryKeyboard)
+
+                    Button {
                         Task {
-                            await getLLMResponse()
+                            await suggestTerm()
                         }
-                        
+                    } label: {
+                        if awaitingSuggestion {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "sparkles")
+                        }
                     }
-                    .focused($queryKeyboard)
+                    .disabled(awaitingSuggestion)
+                    .alert("No Suggestions Found", isPresented: $showNoSuggestionAlert) {
+                        Button("Ok") { }
+                    } message: {
+                        Text("You already have cards for the top terms in the selected categories.")
+                    }
+                }
+                .padding(.horizontal)
                 
                 
                 ZStack {
@@ -208,7 +236,7 @@ struct AnalyzeView: View {
                 }
                 .sheet(isPresented: $showingFreqList) {
                     GeometryReader { geometry in
-                        FreqListView(awaitingFreqList: $awaitingFreqList, geometry: geometry, freqListItems: freqListItems)
+                        FreqListView(awaitingFreqList: $awaitingFreqList, geometry: geometry, freqListItems: freqListItems, existingAnswers: existingAnswers)
                     }
                 }
             
@@ -258,6 +286,26 @@ struct AnalyzeView: View {
         return finalData
     }
     
+    // MARK: suggestTerm
+    private func suggestTerm() async {
+        awaitingSuggestion = true
+
+        let candidateCategories = (categories.isEmpty ? Category.allCases : categories).shuffled()
+        let existing = existingAnswers
+
+        for category in candidateCategories {
+            let items = await fetchFrequencyList(category: category, difficulties: difficulties)
+            if let suggestion = items.first(where: { !existing.contains($0.answer.lowercased()) }) {
+                answerQuery = suggestion.answer
+                awaitingSuggestion = false
+                return
+            }
+        }
+
+        awaitingSuggestion = false
+        showNoSuggestionAlert = true
+    }
+
     // MARK: fetchData
     private func fetchData(query: String, difficulties: Set<Int>, categories: [Category]) async -> [Question] {
         

@@ -14,9 +14,20 @@ struct FreqListView: View {
     @Binding var awaitingFreqList: Bool
     let geometry: GeometryProxy
     let freqListItems: [FreqListItem]
-    
+    let existingAnswers: Set<String>
+
+    @State private var hideExisting = true
+
+    var displayedItems: [FreqListItem] {
+        guard hideExisting else { return freqListItems }
+        return freqListItems.filter { !existingAnswers.contains($0.answer.lowercased()) }
+    }
+
     var body: some View {
         VStack {
+            Toggle("Hide cards I already have", isOn: $hideExisting)
+                .frame(width: geometry.size.width*0.7)
+                .padding(.bottom, 4)
             HStack {
                 Text("**Answer**")
                 Spacer()
@@ -31,7 +42,7 @@ struct FreqListView: View {
                 }
             }
             ScrollView {
-                ForEach(Array(freqListItems.enumerated()), id: \.offset) { number, item in
+                ForEach(Array(displayedItems.enumerated()), id: \.offset) { number, item in
                     HStack {
                         Text("\(number + 1)  ")
                             .fontWeight(.ultraLight)
