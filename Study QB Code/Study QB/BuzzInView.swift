@@ -17,23 +17,29 @@ struct BuzzInView: View {
 
     @Environment(\.modelContext) var modelContext
     @Environment(\.dismiss) var dismiss
+    @Environment(\.locale) var locale
 
     @State private var currentIndex = 0
     @State private var words: [String] = []
+    
     @State private var revealedCount = 0
     @State private var tickCount = 0
     @State private var buzzed = false
+    @State private var buzzAnswer = ""
+    @State private var buzzCountdownTicks = 0
+    @State private var countdownFinished = false
     @State private var gotIt: Bool? = nil
+    @FocusState private var answerFieldFocused: Bool
+    
     @State private var generatingTossup = false
     @State private var generationError = false
+    
     @State private var sessionComplete = false
     @State private var sessionPoints = 0
     @State private var numberCorrect = 0
     @State private var numberIncorrect = 0
-    @State private var buzzAnswer = ""
-    @State private var buzzCountdownTicks = 0
-    @State private var countdownFinished = false
-    @FocusState private var answerFieldFocused: Bool
+    
+    @State private var spacedRepetitionRating: Rating? = nil
     
     var questionProgressPercent: Double {
         return Double(revealedCount) / Double(words.count)
@@ -52,6 +58,16 @@ struct BuzzInView: View {
         let typed = buzzAnswer.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !typed.isEmpty else { return false }
         return fuzzyMatch(typed: typed, correct: reviewCards[currentIndex].answer)
+    }
+
+    var projectedDueDateString: String {
+        guard spacedRepetition, let rating = spacedRepetitionRating else { return "" }
+        let postCard = computePostReviewCard(card: reviewCards[currentIndex], rating: rating)
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = locale
+        dateFormatter.dateStyle = .medium
+        dateFormatter.timeStyle = .none
+        return dateFormatter.string(from: postCard.due)
     }
 
     static let tickLength = 0.05 // This is how many seconds per tick
@@ -204,7 +220,7 @@ struct BuzzInView: View {
                                     numberCorrect += 1
                                     recordCardAttempt(correct: true)
                                     if spacedRepetition {
-                                        scheduleReview(card: reviewCards[currentIndex], rating: .good, modelContext: modelContext)
+                                        spacedRepetitionRating = revealedCount < words.count ? .good : .hard
                                     }
                                 }
                                 .foregroundStyle(.white)
@@ -226,7 +242,7 @@ struct BuzzInView: View {
                                     sessionPoints += interrupted ? -5 : 0
                                     recordCardAttempt(correct: false)
                                     if spacedRepetition {
-                                        scheduleReview(card: reviewCards[currentIndex], rating: .again, modelContext: modelContext)
+                                        spacedRepetitionRating = .again
                                     }
                                 }
                                 .foregroundStyle(.white)
@@ -242,16 +258,83 @@ struct BuzzInView: View {
                                 )
                             }
                         } else {
-                            Button("Next Card") {
-                                advanceCard()
+                            VStack(spacing: 12) {
+                                if spacedRepetition {
+                                    Text("**\(projectedDueDateString)**")
+                                    HStack {
+                                        Button {
+                                            spacedRepetitionRating = .again
+                                        } label: {
+                                            Text("Again")
+                                                .foregroundStyle(.white)
+                                                .bold()
+                                                .padding()
+                                                .background(
+                                                    RoundedRectangle(cornerRadius: 10)
+                                                        .fill(Color.red.gradient)
+                                                )
+                                                .border(.blue, width: spacedRepetitionRating == Rating.again ? 4 : 0)
+                                        }
+
+                                        Button {
+                                            spacedRepetitionRating = .hard
+                                        } label: {
+                                            Text("Hard")
+                                                .foregroundStyle(.white)
+                                                .bold()
+                                                .padding()
+                                                .background(
+                                                    RoundedRectangle(cornerRadius: 10)
+                                                        .fill(Color.orange.gradient)
+                                                )
+                                                .border(.blue, width: spacedRepetitionRating == Rating.hard ? 4 : 0)
+                                        }
+
+                                        Button {
+                                            spacedRepetitionRating = .good
+                                        } label: {
+                                            Text("Good")
+                                                .foregroundStyle(.white)
+                                                .bold()
+                                                .padding()
+                                                .background(
+                                                    RoundedRectangle(cornerRadius: 10)
+                                                        .fill(Color.yellow.gradient)
+                                                )
+                                                .border(.blue, width: spacedRepetitionRating == Rating.good ? 4 : 0)
+                                        }
+
+                                        Button {
+                                            spacedRepetitionRating = .easy
+                                        } label: {
+                                            Text("Easy")
+                                                .foregroundStyle(.white)
+                                                .bold()
+                                                .padding()
+                                                .background(
+                                                    RoundedRectangle(cornerRadius: 10)
+                                                        .fill(Color.green.gradient)
+                                                )
+                                                .border(.blue, width: spacedRepetitionRating == Rating.easy ? 4 : 0)
+                                        }
+                                    }
+                                }
+
+                                Button("Next Card") {
+                                    if spacedRepetition, let rating = spacedRepetitionRating {
+                                        scheduleReview(card: reviewCards[currentIndex], rating: rating, modelContext: modelContext)
+                                        spacedRepetitionRating = nil
+                                    }
+                                    advanceCard()
+                                }
+                                .foregroundStyle(.white)
+                                .bold()
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.blue.gradient)
+                                )
                             }
-                            .foregroundStyle(.white)
-                            .bold()
-                            .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.blue.gradient)
-                            )
                         }
                     } else if buzzed {
                         Button("Submit") {
@@ -369,10 +452,11 @@ struct BuzzInView: View {
         }
     }
 
-    // MARK: loadCurrentCard
-    private func loadCurrentCard() async {
+    // MARK: resetCardState
+    private func resetCardState() {
         buzzed = false
         gotIt = nil
+        spacedRepetitionRating = nil
         revealedCount = 0
         tickCount = 0
         generationError = false
@@ -380,6 +464,11 @@ struct BuzzInView: View {
         buzzAnswer = ""
         buzzCountdownTicks = 0
         countdownFinished = false
+    }
+
+    // MARK: loadCurrentCard
+    private func loadCurrentCard() async {
+        resetCardState()
         let card = reviewCards[currentIndex]
 
         if let cached = card.cachedTossup {
@@ -413,6 +502,7 @@ struct BuzzInView: View {
     // MARK: advanceCard
     private func advanceCard() {
         if currentIndex + 1 < reviewCards.count {
+            resetCardState()
             currentIndex += 1
             Task {
                 await loadCurrentCard()

@@ -44,24 +44,18 @@ struct PracticeView: View {
     
     var projectedDueDateString: String {
         if spacedRepetition {
-            let scheduler = LongTermScheduler()
             let card = currentCard as! Card
             guard let rating = spacedRepetitionRating else {
                  return ""
             }
-            
-            let review = scheduler.schedule(
-                card: card.fsrsCard!,
-                algorithm: .v5,
-                reviewRating: rating, // or .easy, .hard, .again
-                reviewTime: Date()
-            )
+
+            let postCard = computePostReviewCard(card: card, rating: rating)
             let dateFormatter = DateFormatter()
             dateFormatter.locale = locale
             dateFormatter.dateStyle = .medium
             dateFormatter.timeStyle = .none
-            return dateFormatter.string(from: review.postReviewCard.due)
-            
+            return dateFormatter.string(from: postCard.due)
+
         } else {
             return ""
         }

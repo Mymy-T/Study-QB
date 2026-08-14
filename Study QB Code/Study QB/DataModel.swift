@@ -74,20 +74,25 @@ protocol CardLike {
 typealias Card = CardSchemaV4.Card
 typealias FSRSCard = SwiftFSRS.Card
 
-// MARK: scheduleReview
-func scheduleReview(card: Card, rating: Rating, modelContext: ModelContext) {
+// MARK: computePostReviewCard
+func computePostReviewCard(card: Card, rating: Rating, reviewTime: Date = Date()) -> FSRSCard {
     let scheduler = LongTermScheduler()
     let review = scheduler.schedule(
         card: card.fsrsCard!,
         algorithm: .v5,
         reviewRating: rating,
-        reviewTime: Date()
+        reviewTime: reviewTime
     )
     var postCard = review.postReviewCard
     if rating == .again {
-        postCard.due = Date()
+        postCard.due = reviewTime
     }
-    card.fsrsCard = postCard
+    return postCard
+}
+
+// MARK: scheduleReview
+func scheduleReview(card: Card, rating: Rating, modelContext: ModelContext) {
+    card.fsrsCard = computePostReviewCard(card: card, rating: rating)
     do {
         try modelContext.save()
     } catch {
