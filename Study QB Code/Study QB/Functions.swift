@@ -28,6 +28,13 @@ func convertColorToRGBA(_ color: Color) -> [Double] {
     }
 }
 
+func colorForNormalizedScore(_ value: Double) -> Color {
+    let clamped = min(max(value, 0), 1)
+    // Hue 0.33 (green) at 0 -> 0.0 (red) at 1, passing through yellow/orange
+    let hue = 0.33 * (1 - clamped)
+    return Color(hue: hue, saturation: 0.85, brightness: 0.85)
+}
+
 func colorIndexFromCategory(_ category: Category) -> Int {
     var categoryColorDict: [Category: Int] = [:]
     var i = 0
