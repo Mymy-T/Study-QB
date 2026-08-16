@@ -25,18 +25,6 @@ struct ManageCardGrid: View {
     let categories: [Category]
     let onlyShowMarked: Bool
     
-    var dateStrings: [String] {
-        var strings: [String] = []
-        for card in searchResults {
-            let dateFormatter = DateFormatter()
-            dateFormatter.locale = locale
-            dateFormatter.dateStyle = .medium
-            dateFormatter.timeStyle = .none
-            strings.append(dateFormatter.string(from: card.dateReviewed))
-        }
-        return strings
-    }
-    
     var searchResults: [Card] {
         let filteredCards = {
             
@@ -64,7 +52,7 @@ struct ManageCardGrid: View {
        ScrollView {
            if searchResults.count != 0 {
                LazyVGrid(columns: columns) {
-                   ForEach(Array(searchResults.enumerated()), id: \.offset) { index, card in
+                   ForEach(searchResults) { card in
                        if editingMode {
                            // Presented when the "Manage Cards" tab is clicked
                            NavigationLink {
@@ -72,21 +60,10 @@ struct ManageCardGrid: View {
                                    CardEditorView(geometry: geometry, existingCard: card)
                                }
                            } label: {
-                               cardLabel(card: card, index: index)
+                               cardLabel(card: card)
                                    .onLongPressGesture(minimumDuration: 1) {
-                                       showingDeleteAlert = true
                                        cardToDelete = card
-                                   }
-                                   .alert("Delete Card?", isPresented: $showingDeleteAlert) {
-                                       Button("No", role: .cancel) { }
-                                       Button("Yes", role: .destructive) {
-                                           guard let card = cardToDelete else {
-                                               print("Failed to delete card")
-                                               return
-                                           }
-                                           modelContext.delete(card)
-                                           cardToDelete = nil
-                                       }
+                                       showingDeleteAlert = true
                                    }
                            }
                        } else {
@@ -101,7 +78,7 @@ struct ManageCardGrid: View {
                                    manuallySelectedCards?.append(card)
                                }
                            } label: {
-                               cardLabel(card: card, index: index)
+                               cardLabel(card: card)
                                    .border(.blue.opacity(0.4), width: manuallySelectedCards!.contains(card) ? 4 : 0)
                            }
                        }
@@ -110,6 +87,17 @@ struct ManageCardGrid: View {
            } else {
                Text("No cards match the selected criteria.")
            }
+        }
+        .alert("Delete Card?", isPresented: $showingDeleteAlert) {
+            Button("No", role: .cancel) { }
+            Button("Yes", role: .destructive) {
+                guard let card = cardToDelete else {
+                    print("Failed to delete card")
+                    return
+                }
+                modelContext.delete(card)
+                cardToDelete = nil
+            }
         }
     }
     
@@ -137,7 +125,7 @@ struct ManageCardGrid: View {
     }
     
     
-    private func cardLabel(card: Card, index: Int) -> some View {
+    private func cardLabel(card: Card) -> some View {
         return VStack {
             Text(card.answer)
                 .font(.title)
@@ -145,7 +133,7 @@ struct ManageCardGrid: View {
                 .bold()
             VStack {
                 Text("Reviewed on")
-                Text(dateStrings[index])
+                Text(dateStringFromCard(card: card))
                     .bold()
             }
             Text(card.category.rawValue)
