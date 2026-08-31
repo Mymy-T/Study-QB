@@ -57,7 +57,7 @@ struct AnalyzeView: View {
     
     
     let groqApiKey = Bundle.main.infoDictionary!["GroqApiKey"] as! String
-    let models = ["llama-3.3-70b-versatile", "moonshotai/kimi-k2-instruct", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "openai/gpt-oss-safeguard-20b", "meta-llama/llama-4-scout-17b-16e-instruct"]
+    let models = ["openai/gpt-oss-120b", "moonshotai/kimi-k2-instruct", "openai/gpt-oss-20b", "qwen/qwen3.6-27b", "llama-3.1-8b-instant"]
     @State private var modelIndex = 0
     var currentModelName: String {
         return models[modelIndex]
