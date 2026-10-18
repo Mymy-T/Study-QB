@@ -32,6 +32,15 @@ enum Category: String, CaseIterable, Codable, Identifiable, Comparable {
     
 }
 
+// Following struct used to represent the cached jsonl data
+struct CachedItem: Codable {
+    let answer: String
+    let category: String
+    let details: String
+    let model: String
+    let num_questions_analyzed: Int
+}
+
 // Following structs for representing api json data returned from frequency-list
 struct FreqListItem: Codable, Identifiable {
     var count: Int

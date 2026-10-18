@@ -57,11 +57,10 @@ struct AnalyzeView: View {
     
     
     let groqApiKey = Bundle.main.infoDictionary!["GroqApiKey"] as! String
-    let models = ["openai/gpt-oss-120b", "moonshotai/kimi-k2-instruct", "openai/gpt-oss-20b", "qwen/qwen3.6-27b", "llama-3.1-8b-instant"]
+    let models = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]
     @State private var modelIndex = 0
-    var currentModelName: String {
-        return models[modelIndex]
-    }
+    
+    @State private var displayModelName: String = ""
     
     var body: some View {
         NavigationStack {
@@ -88,7 +87,11 @@ struct AnalyzeView: View {
                             }
 
                             Task {
-                                await getLLMResponse()
+                                let success = await lookupCachedQuery(for: answerQuery)
+
+                                if !success {
+                                    await getLLMResponse()
+                                }
                             }
 
                         }
@@ -136,7 +139,7 @@ struct AnalyzeView: View {
                     
                 }
                 
-                Text("\(numQuestions) quizbowl questions were analyzed using the \(currentModelName) model.")
+                Text("\(numQuestions) quizbowl questions were analyzed using the \(displayModelName) model.")
                     .font(.caption)
                     .padding(.top)
                     .opacity(responseRecieved ? 1 : 0)
@@ -170,8 +173,13 @@ struct AnalyzeView: View {
                             return
                         }
                         
+                        
                         Task {
-                            await getLLMResponse()
+                            let success = await lookupCachedQuery(for: answerQuery)
+                            
+                            if !success {
+                                await getLLMResponse()
+                            }
                         }
                         
                     } label: {
@@ -192,9 +200,6 @@ struct AnalyzeView: View {
                     
                     
                 }.padding()
-                
-                
-                
                 
                 
             }.navigationTitle("Analyze")
@@ -305,6 +310,48 @@ struct AnalyzeView: View {
         awaitingSuggestion = false
         showNoSuggestionAlert = true
     }
+    
+    
+    private func lookupCachedQuery(for query: String) async -> Bool {
+        
+        guard let url = Bundle.main.url(forResource: "dataset", withExtension: "jsonl") else {
+            responseText = "Loading cached data failed; please wait, trying direct generation..."
+            return false
+        }
+        
+        let decoder = JSONDecoder()
+        
+        do {
+            for try await line in url.lines {
+                guard let data = line.data(using: .utf8) else { continue }
+                
+                let cachedItem: CachedItem
+                do {
+                    cachedItem = try decoder.decode(CachedItem.self, from: data)
+                } catch {
+                    print("Error decoding cached item: \(error)")
+                    continue
+                }
+
+                if fuzzyMatch(typed: query, correct: cachedItem.answer.replacing("_", with: " ")) {
+                    responseText = processResponse(cachedItem.details)
+                    numQuestions = cachedItem.num_questions_analyzed
+                    displayModelName = cachedItem.model
+                    awaitingResponse = false
+                    queryKeyboard = false
+                    responseRecieved = true
+                    return true
+                }
+            }
+        } catch {
+            print("Error reading file: \(error)")
+            return false
+        }
+        
+        return false
+        
+    }
+    
 
     // MARK: fetchData
     private func fetchData(query: String, difficulties: Set<Int>, categories: [Category]) async -> [Question] {
@@ -404,6 +451,7 @@ struct AnalyzeView: View {
                 let response = try await groqClient.createChatCompletion(request)
                 
                 responseText = processResponse(response.choices[0].message.content)
+                displayModelName = models[modelIndex]
                 awaitingResponse = false
                 responseRecieved = true
                 

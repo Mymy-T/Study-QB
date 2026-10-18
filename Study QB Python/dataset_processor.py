@@ -10,10 +10,8 @@ def main():
 
     for data_folder in data_folders:
 
-        save_path = os.path.join(base_data_folder, data_folder, "dataset.json")
-        data = {
-            "items": []
-        }
+        save_path = os.path.join(base_data_folder, data_folder, "dataset.jsonl")
+        items = []
 
         for category in Category:
 
@@ -25,10 +23,11 @@ def main():
                 file_path = os.path.join(category_folder, file)
 
                 with open(file_path, "r", encoding="utf-8") as f:
-                    data["items"].append(json.load(f))
+                    items.append(json.load(f))
         
         with open(save_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
+            for item in items:
+                f.write(json.dumps(item, ensure_ascii=False) + "\n")
         
         print(f"Processing for {data_folder} is complete!")
     

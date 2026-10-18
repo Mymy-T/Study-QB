@@ -45,3 +45,47 @@ func colorIndexFromCategory(_ category: Category) -> Int {
     return categoryColorDict[category]!
 }
 
+// Fuzzy match funcs
+func fuzzyMatch(typed: String, correct: String) -> Bool {
+    let t = _normalizeQuery(typed)
+    let c = _normalizeQuery(correct)
+    guard !t.isEmpty else {
+        return false
+    }
+    if c.contains(t) || t.contains(c) {
+        if c.count > 4 && t.count > 4 {
+            return true
+        }
+    }
+    let dist = _levenshtein(t, c)
+    return dist <= max(1, c.count / 4)
+}
+
+func _normalizeQuery(_ s: String) -> String {
+    var r = s.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+    r = String(r.unicodeScalars.filter(CharacterSet.alphanumerics.contains))
+    for article in ["the ", "a ", "an "] {
+        if r.hasPrefix(article) {
+            r = String(r.dropFirst(article.count)) // Neglects specific answerlines such as 'The Invisible Man' not being acceptable for 'Invisible Man'
+        }
+    }
+    r = r.filter {
+        $0.isLetter || $0.isNumber || $0.isWhitespace
+    }
+    return r.trimmingCharacters(in: .whitespaces)
+}
+
+func _levenshtein(_ a: String, _ b: String) -> Int {
+    let a = Array(a), b = Array(b)
+    if a.isEmpty { return b.count }
+    if b.isEmpty { return a.count }
+    var dp = Array(0...b.count)
+    for i in 1...a.count {
+        let prev = dp
+        dp[0] = i
+        for j in 1...b.count {
+            dp[j] = a[i-1] == b[j-1] ? prev[j-1] : 1 + min(prev[j-1], prev[j], dp[j-1])
+        }
+    }
+    return dp[b.count]
+}

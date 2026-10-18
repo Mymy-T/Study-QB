@@ -714,38 +714,4 @@ struct BuzzInView: View {
             .joined(separator: " ")
     }
 
-    // MARK: Fuzzy match funcs
-    private func fuzzyMatch(typed: String, correct: String) -> Bool {
-        let t = normalize(typed)
-        let c = normalize(correct)
-        guard !t.isEmpty else { return false }
-        if c.contains(t) || t.contains(c) { return true }
-        let dist = levenshtein(t, c)
-        return dist <= max(1, c.count / 4)
-    }
-
-    private func normalize(_ s: String) -> String {
-        var r = s.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        for article in ["the ", "a ", "an "] {
-            if r.hasPrefix(article) { r = String(r.dropFirst(article.count)) }
-        }
-        r = r.filter { $0.isLetter || $0.isNumber || $0.isWhitespace }
-        return r.trimmingCharacters(in: .whitespaces)
-    }
-
-    private func levenshtein(_ a: String, _ b: String) -> Int {
-        let a = Array(a), b = Array(b)
-        if a.isEmpty { return b.count }
-        if b.isEmpty { return a.count }
-        var dp = Array(0...b.count)
-        for i in 1...a.count {
-            let prev = dp
-            dp[0] = i
-            for j in 1...b.count {
-                dp[j] = a[i-1] == b[j-1] ? prev[j-1] : 1 + min(prev[j-1], prev[j], dp[j-1])
-            }
-        }
-        return dp[b.count]
-    }
-
 }
