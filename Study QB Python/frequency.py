@@ -10,7 +10,7 @@ def get_list_for_category(category: Category):
     category_str = category.value
 
     url = "https://www.qbreader.org/api/frequency-list"
-    params = {"category": category_str, "difficulties": difficulties, "limit": Configs().num_per_category}
+    params = {"category": category_str, "difficulties": difficulties, "limit": Configs().num_per_category, "questionType": "tossup"} # NOTE: questionType was recently added, the current dataset_top_100 used bonuses as well so it's slightly off; could be regenerated later
 
     try:
         response = requests.get(url, params=params)

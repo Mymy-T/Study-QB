@@ -21,6 +21,8 @@ def main():
             os.mkdir(category_folder)
 
         answers = get_list_for_category(category)
+        if answers is None:
+            raise RuntimeError("Couldn't obtain frequency list for category. Maybe try again later.")
 
         for answer in answers:
 
@@ -34,7 +36,7 @@ def main():
             details, num_questions = _get_response(query=answer, category=category)
 
             if details is None:
-                consecutive_num_failednum_failed += 1
+                consecutive_num_failed += 1
 
                 if consecutive_num_failed >= max_num_failed:
                     return
