@@ -36,12 +36,12 @@ class Paths:
         configs = Configs()
 
         base_folder = os.path.dirname(os.path.abspath(__file__)) # paths.py should be on same level as other files
-        base_data_folder = os.path.join(base_folder, "data")
+        self.base_data_folder = os.path.join(base_folder, "data")
 
-        self.data_folder = os.path.join(base_data_folder, f"dataset_top_{configs.num_per_category}")
+        self.data_folder = os.path.join(self.base_data_folder, f"dataset_top_{configs.num_per_category}")
 
-        if not os.path.exists(base_data_folder):
-            os.mkdir(base_data_folder)
+        if not os.path.exists(self.base_data_folder):
+            os.mkdir(self.base_data_folder)
         
         if not os.path.exists(self.data_folder):
             os.mkdir(self.data_folder)
