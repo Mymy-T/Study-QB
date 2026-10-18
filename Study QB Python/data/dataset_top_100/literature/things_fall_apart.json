@@ -1,0 +1,7 @@
+{
+    "answer": "things_fall_apart",
+    "category": "literature",
+    "details": "**Okonkwo** \u2013 central protagonist, a proud warrior from the Ibo village of Umuofia.  \n**Umuofia** \u2013 the community and setting where most of the novel takes place.  \n**Ikemefuna** \u2013 Okonkwo\u2019s adopted son who is killed at the end of a communal decision.  \n**Amalinze the Cat** \u2013 legendary wrestler whom Okonkwo defeats in a public contest.  \n**Week of Peace** \u2013 village ritual forbidding fighting; Okonkwo breaks it by beating his wife.  \n**Nwoye** \u2013 Okonkwo\u2019s son who later converts to Christianity.  \n**Ezinma** \u2013 Nwoye\u2019s sister, the only child to survive, and the object of the Oracle of the Hills.  \n**Christian missionaries** \u2013 white agents who introduce religion and new customs to Umuofia.  \n**Mr.\u202fBrown** \u2013 the kind first missionary who establishes a hospital and teaches the village.  \n**Reverend\u202fSmith** \u2013 the stern second missionary who replaces Mr.\u202fBrown.  \n**Gun misfire** \u2013 the accidental shooting during a funeral that forces Okonkwo into exile.  \n**Seven\u2011year exile** \u2013 Okonkwo\u2019s punishment after the misfire, during which he sees the village change.  \n**Suicide (hanging)** \u2013 Okonkwo\u2019s final act after returning to a transformed village.",
+    "model": "openai/gpt-oss-20b",
+    "num_questions_analyzed": 25
+}

@@ -1,2 +1,9 @@
 *.xcconfig
 !example_secrets.xcconfig
+
+.DS_Store
+
+.venv/
+__pycache__/
+
+api_key.py

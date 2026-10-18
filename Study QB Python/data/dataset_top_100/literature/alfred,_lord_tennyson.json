@@ -1,0 +1,7 @@
+{
+    "answer": "alfred,_lord_tennyson",
+    "category": "literature",
+    "details": "**Ulysses** \u2013 contains the famous line \u201cTo strive, to seek, to find, and not to yield.\u201d  \n**The Charge of the Light Brigade** \u2013 features the refrain \u201cHalf a league onward, all in the valley of death, rode the six hundred.\u201d  \n**In Memoriam A.H.H.** \u2013 includes the lament \u201c\u2018Tis better to have loved and lost than never to have loved at all.\u201d  \n**Crossing the Bar** \u2013 concludes with the plea \u201cI hope to see my Pilot face to face.\u201d  \n**The Lady of Shalott** \u2013 notes the mirror\u2019s crack and the doomed isolation of the titular lady.  \n**Break, Break, Break** \u2013 a mournful elegy for A.H.H., lamenting the loss of a beloved.  \n**The Lotos-Eaters** \u2013 recounts a Greek myth about men who abandon their duties in a dreamlike state.  \n**The Kraken** \u2013 depicts a vast, ancient sea monster terrorizing the deep.  \n**Tithonus** \u2013 tells the story of a man cursed with eternal life but never aging.  \n**Sunset and Evening Star** \u2013 opens with the line \u201cSunset and evening star, and one clear call for me!\u201d describing longing.  \n**Half a league onward** \u2013 repeated motif in *The Charge of the Light Brigade*, underscoring the relentless march of the soldiers.  \n**I hope to see my Pilot face to face** \u2013 recurring yearning in several of Tennyson\u2019s poems, symbolizing the desire to confront death.",
+    "model": "openai/gpt-oss-20b",
+    "num_questions_analyzed": 23
+}
