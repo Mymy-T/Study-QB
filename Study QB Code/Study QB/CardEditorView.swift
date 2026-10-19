@@ -95,9 +95,14 @@ struct CardEditorView: View {
     }
     
     // Creating a new card from AnalyzeView
-    init(geometry: GeometryProxy, answer: String, details: AttributedString) {
+    init(geometry: GeometryProxy, answer: String, details: AttributedString, category: Category) {
         self.geometry = geometry
         self.answer = answer
+        self.category = category
+        
+        let i = colorIndexFromCategory(category)
+        color = colors[i].opacity(0.4)
+        
         var formattedDetails = details
         formattedDetails.font = UIFont.systemFont(ofSize: 17)
         self.details = NSAttributedString(formattedDetails)

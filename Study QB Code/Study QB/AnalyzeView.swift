@@ -33,6 +33,7 @@ struct AnalyzeView: View {
 
 
     @State private var answerQuery = ""
+    @State private var answerCategory: Category? = nil
     @FocusState var queryKeyboard: Bool
     @State private var difficulties: Set<Int> = [2, 3, 4, 5]
     @State private var categories: [Category] = [] // [] matches all categories
@@ -46,6 +47,8 @@ struct AnalyzeView: View {
 
     @State private var awaitingSuggestion = false
     @State private var showNoSuggestionAlert = false
+    @State private var suggestedText: String = ""
+    @State private var validSuggestionMade = false
 
     @State private var analyzeHelpPresented = false
     
@@ -81,18 +84,7 @@ struct AnalyzeView: View {
                         )
                         .onSubmit {
 
-                            guard answerQuery != "" else {
-                                showEmptyQueryAlert = true
-                                return
-                            }
-
-                            Task {
-                                let success = await lookupCachedQuery(for: answerQuery)
-
-                                if !success {
-                                    await getLLMResponse()
-                                }
-                            }
+                            analyzeClues()
 
                         }
                         .focused($queryKeyboard)
@@ -150,7 +142,7 @@ struct AnalyzeView: View {
                     // MARK: Save Card
                     
                     NavigationLink {
-                        CardEditorView(geometry: geometry, answer: answerQuery, details: responseText)
+                        CardEditorView(geometry: geometry, answer: answerQuery, details: responseText, category: answerCategory ?? .lit)
                     } label: {
                         Text("Save")
                             .foregroundStyle(.white)
@@ -168,19 +160,7 @@ struct AnalyzeView: View {
                     // MARK: Find Common Clues
                     Button {
                         
-                        guard answerQuery != "" else {
-                            showEmptyQueryAlert = true
-                            return
-                        }
-                        
-                        
-                        Task {
-                            let success = await lookupCachedQuery(for: answerQuery)
-                            
-                            if !success {
-                                await getLLMResponse()
-                            }
-                        }
+                        analyzeClues()
                         
                     } label: {
                         Text("Find Common Clues")
@@ -300,9 +280,32 @@ struct AnalyzeView: View {
 
         for category in candidateCategories {
             let items = await fetchFrequencyList(category: category, difficulties: difficulties)
-            if let suggestion = items.first(where: { !cardExists(forAnswer: $0.answer, in: cards) }) {
-                answerQuery = suggestion.answer
+            var suggestions = items.filter { !cardExists(forAnswer: $0.answer, in: cards) }
+            suggestions = suggestions.sorted {
+                $0.count > $1.count
+            }
+            let numSuggestions = suggestions.count
+            let range = 0..<min(numSuggestions, 5) // One of the top 5, or less if there aren't that many viable elements
+            let topSuggestions = suggestions[range]
+            var suggestion: FreqListItem? = nil
+            
+            if topSuggestions.count > 1 {
+                var uniqueSuggestion = false
+                while !uniqueSuggestion {
+                    suggestion = topSuggestions.randomElement()
+                    uniqueSuggestion = suggestion!.answer != suggestedText
+                    suggestedText = suggestion!.answer
+                }
+            } else if topSuggestions.count == 1 {
+                suggestion = topSuggestions.randomElement()
+            }
+            
+            if suggestion != nil {
+                answerQuery = suggestion!.answer
+                answerCategory = category
                 awaitingSuggestion = false
+                validSuggestionMade = true
+                suggestedText = answerQuery
                 return
             }
         }
@@ -311,7 +314,7 @@ struct AnalyzeView: View {
         showNoSuggestionAlert = true
     }
     
-    
+    // MARK: Lookup Cached Query
     private func lookupCachedQuery(for query: String) async -> Bool {
         
         guard let url = Bundle.main.url(forResource: "dataset", withExtension: "jsonl") else {
@@ -320,6 +323,10 @@ struct AnalyzeView: View {
         }
         
         let decoder = JSONDecoder()
+        
+        let acceptedCategories = categories.map { category in
+            return category.rawValue.lowercased().replacing(" ", with: "_")
+        }
         
         do {
             for try await line in url.lines {
@@ -334,13 +341,19 @@ struct AnalyzeView: View {
                 }
 
                 if fuzzyMatch(typed: query, correct: cachedItem.answer.replacing("_", with: " ")) {
-                    responseText = processResponse(cachedItem.details)
-                    numQuestions = cachedItem.num_questions_analyzed
-                    displayModelName = cachedItem.model
-                    awaitingResponse = false
-                    queryKeyboard = false
-                    responseRecieved = true
-                    return true
+                    
+                    if acceptedCategories.contains(cachedItem.category) {
+                        
+                        responseText = processResponse(cachedItem.details)
+                        numQuestions = cachedItem.num_questions_analyzed
+                        displayModelName = cachedItem.model
+                        
+                        awaitingResponse = false
+                        queryKeyboard = false
+                        responseRecieved = true
+                        
+                        return true
+                    }
                 }
             }
         } catch {
@@ -497,6 +510,36 @@ struct AnalyzeView: View {
             print("Error with processing response")
             return "Error with processing response"
         }
+    }
+    
+    
+    // MARK: analyzeClues
+    private func analyzeClues() {
+        guard answerQuery != "" else {
+            showEmptyQueryAlert = true
+            return
+        }
+        
+        if !validSuggestionMade {
+            answerCategory = nil
+        }
+        
+        if categories.count == 1 && !validSuggestionMade {
+            answerCategory = categories[0]
+        }
+
+        Task {
+            let success = await lookupCachedQuery(for: answerQuery)
+
+            if !success {
+                await getLLMResponse()
+            }
+        }
+        
+        if answerQuery != suggestedText {
+            validSuggestionMade = false
+        }
+        
     }
     
     

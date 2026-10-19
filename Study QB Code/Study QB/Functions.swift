@@ -53,7 +53,7 @@ func fuzzyMatch(typed: String, correct: String) -> Bool {
         return false
     }
     if c.contains(t) || t.contains(c) {
-        if c.count > 4 && t.count > 4 {
+        if c.count > 4 && t.count > 4 && abs(t.count - c.count) <= 10 { // TODO: Tune this, or at least allow user to change the default loaded card, or ensure that there's a match on qb reader or something
             return true
         }
     }
