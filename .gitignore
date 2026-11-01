@@ -1,5 +1,6 @@
 *.xcconfig
 !example_secrets.xcconfig
+Groq.txt
 
 .DS_Store
 
@@ -7,3 +8,4 @@
 __pycache__/
 
 api_key.py
+claude_analysis.txt
