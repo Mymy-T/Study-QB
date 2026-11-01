@@ -1,0 +1,34 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Signing material — never commit these. Leaking the upload keystore lets anyone
+# sign builds as this app, and unlike an API key it cannot simply be rotated
+# without losing the ability to update the Play listing.
+/Keystore/
+*.jks
+*.keystore
+keystore.properties
+
+# Release build artifacts. These embed BuildConfig.GROQ_API_KEY in their dex, so
+# committing one would put the key permanently into git history.
+/app/release/
+*.aab
+*.apk
+
+# Claude Code transient session state
+/.claude/scheduled_tasks.lock
+
+.kotlin/
