@@ -16,7 +16,7 @@ struct HelpView: View {
     var body: some View {
         VStack(alignment: .center) {
             Spacer()
-            Text("Usage Details")
+            Text("Usage Details (1.4)")
                 .font(.largeTitle)
                 .bold()
             Spacer()

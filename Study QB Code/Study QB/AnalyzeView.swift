@@ -324,8 +324,14 @@ struct AnalyzeView: View {
         
         let decoder = JSONDecoder()
         
-        let acceptedCategories = categories.map { category in
+        var acceptedCategories = categories.map { category in
             return category.rawValue.lowercased().replacing(" ", with: "_")
+        }
+        
+        if acceptedCategories.count == 0 { // If no categories are specified, just allow all categories
+            for category in Category.allCases {
+                acceptedCategories.append(category.rawValue.lowercased().replacing(" ", with: "_"))
+            }
         }
         
         do {
@@ -339,7 +345,7 @@ struct AnalyzeView: View {
                     print("Error decoding cached item: \(error)")
                     continue
                 }
-
+                
                 if fuzzyMatch(typed: query, correct: cachedItem.answer.replacing("_", with: " ")) {
                     
                     if acceptedCategories.contains(cachedItem.category) {
